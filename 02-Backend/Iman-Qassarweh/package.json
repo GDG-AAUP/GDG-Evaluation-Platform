@@ -1,0 +1,23 @@
+{
+  "name": "gdg-evaluation-backend",
+  "version": "1.0.0",
+  "description": "GDG evaluation platform backend",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node --test tests/account-workflows.test.js tests/invitation-redirect.test.js tests/schema-compatibility.test.js",
+    "test:db": "node --env-file=.env --test tests/account-workflows.test.js tests/invitation-redirect.test.js tests/schema-compatibility.test.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@clerk/express": "^2.1.79",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.8",
+    "express": "^5.3.0",
+    "pg": "^8.23.1"
+  }
+}
