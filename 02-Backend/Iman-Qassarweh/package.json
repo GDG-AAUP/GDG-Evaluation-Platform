@@ -7,7 +7,9 @@
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "test": "node --test tests/account-workflows.test.js tests/invitation-redirect.test.js tests/schema-compatibility.test.js",
-    "test:db": "node --env-file=.env --test tests/account-workflows.test.js tests/invitation-redirect.test.js tests/schema-compatibility.test.js"
+    "test:db": "node --env-file=.env --test tests/account-workflows.test.js tests/invitation-redirect.test.js tests/schema-compatibility.test.js",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit"
   },
   "keywords": [],
   "author": "",
@@ -19,5 +21,11 @@
     "dotenv": "^18.0.8",
     "express": "^5.3.0",
     "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.6.5",
+    "@types/pg": "^8.23.1",
+    "typescript": "^7.0.2"
   }
 }
