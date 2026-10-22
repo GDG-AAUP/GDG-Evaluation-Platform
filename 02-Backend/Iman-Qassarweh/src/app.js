@@ -1,3 +1,4 @@
+
 // Configures API routes, Clerk authentication and shared error handling.
 const express = require('express')
 const cors = require('cors')
@@ -12,6 +13,13 @@ const loadProjectUser = require('./middleware/load-project-user')
 const requireRole = require('./middleware/require-role')
 const usersRoutes = require('./routes/users.routes')
 
+
+
+// ------- phase 2 
+const { createPointsRouter } = require('../dist/phase2/points/points.routes.js')
+
+
+// ----------
 const app = express()
 
 app.use(cors())
@@ -96,6 +104,12 @@ app.get(
 )
 
 app.use('/api/users', usersRoutes)
+
+
+// phase 2 ---------------------------------------
+app.use('/api/points', loadProjectUser, createPointsRouter(pool))
+
+// phase 2 ---------------------------------------
 
 // Returns a JSON error when no route matches the request.
 app.use((req, res) => {
