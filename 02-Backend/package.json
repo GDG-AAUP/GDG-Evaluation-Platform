@@ -6,12 +6,13 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "test": "node --test tests/account-workflows.test.js tests/invitation-redirect.test.js tests/schema-compatibility.test.js tests/points.routes.test.js",
-    "test:db": "node --env-file=.env --test tests/account-workflows.test.js tests/invitation-redirect.test.js tests/schema-compatibility.test.js tests/points.routes.test.js",
+    "test": "node --test tests/account-workflows.test.js tests/invitation-redirect.test.js tests/schema-compatibility.test.js tests/points.routes.test.js tests/check-recipient.test.js tests/validate-point.test.js tests/create-point.test.js tests/points.db.test.js",
+    "test:db": "node --env-file=.env --test tests/account-workflows.test.js tests/invitation-redirect.test.js tests/schema-compatibility.test.js tests/points.routes.test.js tests/check-recipient.test.js tests/validate-point.test.js tests/create-point.test.js tests/points.db.test.js",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit",
     "pretest": "npm run build",
-    "pretest:db": "npm run build"
+    "pretest:db": "npm run build",
+    "prestart": "npm run build"
   },
   "keywords": [],
   "author": "",
