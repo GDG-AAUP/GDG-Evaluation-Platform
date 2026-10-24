@@ -1,0 +1,5 @@
+/* GDG design tokens: Google brand colors + light/dark roles */
+:root{--blue:#4285F4;--red:#EA4335;--yellow:#FBBC04;--green:#34A853;--pri:#1A73E8;--pri-t:#1A73E8;--tx:#202124;--tx2:#5F6368;--bd:#DADCE0;--bg:#F8F9FA;--card:#fff;--hover:#F1F3F4;
+--sb:#E8F0FE;--sr:#FCE8E6;--sy:#FEF7E0;--sg:#E6F4EA;--sn:#F1F3F4;--tb:#174EA6;--tr:#C5221F;--ty:#8A5300;--tg:#137333;--tn:#5F6368;--r:12px}
+[data-theme=dark]{--tx:#E8EAED;--tx2:#9AA0A6;--bd:#3C4043;--bg:#202124;--card:#292A2D;--hover:#35363A;--pri-t:#8AB4F8;
+--sb:#1C2B46;--sr:#3A1F1D;--sy:#3A3118;--sg:#18321F;--sn:#35363A;--tb:#AECBFA;--tr:#F28B82;--ty:#FDD663;--tg:#81C995;--tn:#BDC1C6}
