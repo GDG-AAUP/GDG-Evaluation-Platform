@@ -13,20 +13,34 @@ const loadProjectUser = require('./middleware/load-project-user')
 const requireRole = require('./middleware/require-role')
 const usersRoutes = require('./routes/users.routes')
 
-
-
-// ------- phase 2 
+// Phase 2
 const { createPointsRouter } = require('../dist/phase2/points/points.routes.js')
+const {
+  createRankingsRouter
+} = require('../dist/phase2/rankings/rankings.routes.js')
 
+const { createAuditRouter } =
+  require('../dist/phase2/audit/audit.routes.js')
 
-// ----------
+const { createManagerEvaluationsRouter } = require('../dist/phase2/evaluations/manager-evaluations.routes.js')
+
 const app = express()
 
 app.use(cors())
 app.use(express.json())
 
-// Verifies Clerk session tokens before requests reach the routes.
+// Phase 2: Public rankings are accessible without login.
+app.use('/api/rankings', createRankingsRouter(pool))
+
+// Verifies Clerk session tokens for subsequent routes.
 app.use(clerkMiddleware())
+
+app.use(
+  '/api/audit',
+  loadProjectUser,
+  requireRole('organizer'),
+  createAuditRouter(pool)
+)
 
 app.get('/api/health', (req, res) => {
   res.status(200).json({
@@ -34,7 +48,6 @@ app.get('/api/health', (req, res) => {
     message: 'GDG Backend is running',
   })
 })
-
 
 // Requires an active linked project account before accessing campus or team routes.
 app.use('/api/campuses', loadProjectUser, campusesRoutes)
@@ -69,24 +82,63 @@ app.get('/api/auth/me', loadProjectUser, (req, res) => {
   })
 })
 
-// Completes invitation linking using the verified session, never client-supplied IDs or roles.
+// Completes invitation linking using the verified session,
+// never client-supplied IDs or roles.
 app.post('/api/auth/complete-registration', async (req, res) => {
   const { userId } = getAuth(req)
-  if (!userId) return res.status(401).json({
-    error: { code: 'UNAUTHENTICATED', message: 'Authentication is required' },
-  })
-  if (req.body !== undefined && (!req.body || typeof req.body !== 'object' ||
-      Array.isArray(req.body) || Object.keys(req.body).length)) {
-    return res.status(400).json({ error: { code: 'INVALID_REGISTRATION_DATA', message: 'No user ID, email or role should be supplied' } })
+
+  if (!userId) {
+    return res.status(401).json({
+      error: {
+        code: 'UNAUTHENTICATED',
+        message: 'Authentication is required'
+      },
+    })
   }
+
+  if (
+    req.body !== undefined &&
+    (
+      !req.body ||
+      typeof req.body !== 'object' ||
+      Array.isArray(req.body) ||
+      Object.keys(req.body).length
+    )
+  ) {
+    return res.status(400).json({
+      error: {
+        code: 'INVALID_REGISTRATION_DATA',
+        message: 'No user ID, email or role should be supplied'
+      }
+    })
+  }
+
   const existing = await usersRepository.findUserByClerkId(userId)
   const user = existing || await linkClerkAccount(userId)
-  if (!user || user.isActive !== true || user.deletedAt || !['organizer', 'manager', 'member'].includes(user.role)) {
-    return res.status(403).json({ error: { code: 'PROJECT_ACCESS_DENIED', message: 'An active account and a matching accepted invitation are required' } })
+
+  if (
+    !user ||
+    user.isActive !== true ||
+    user.deletedAt ||
+    !['organizer', 'manager', 'member'].includes(user.role)
+  ) {
+    return res.status(403).json({
+      error: {
+        code: 'PROJECT_ACCESS_DENIED',
+        message: 'An active account and a matching accepted invitation are required'
+      }
+    })
   }
-  return res.status(200).json({ data: {
-    id: user.id, name: user.name, role: user.role, teamId: user.teamId, isActive: user.isActive,
-  } })
+
+  return res.status(200).json({
+    data: {
+      id: user.id,
+      name: user.name,
+      role: user.role,
+      teamId: user.teamId,
+      isActive: user.isActive,
+    }
+  })
 })
 
 // Checks that the current project account has the organizer role.
@@ -105,11 +157,10 @@ app.get(
 
 app.use('/api/users', usersRoutes)
 
-
-// phase 2 ---------------------------------------
+// Phase 2: Protected point operations.
 app.use('/api/points', loadProjectUser, createPointsRouter(pool))
 
-// phase 2 ---------------------------------------
+app.use('/api/evaluations', loadProjectUser, createManagerEvaluationsRouter(pool))
 
 // Returns a JSON error when no route matches the request.
 app.use((req, res) => {
