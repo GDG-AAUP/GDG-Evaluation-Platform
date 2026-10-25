@@ -158,21 +158,63 @@ test('PostgreSQL account, invitation and registration workflows', {
       assert.ok(!JSON.stringify(logs.rows).includes('clerk_invited'))
     })
 
-    await t.test('new evaluation table accepts multiple occurrences and preserves database shape checks', async () => {
+    await t.test('four-criterion evaluations support multiple occurrences and enforce database constraints', async () => {
       await reset()
-      const scores = [...Array(5).fill(10), ...Array(10).fill(5)]
-      const insert = input => client.query(`INSERT INTO performance_evaluations
-        (evaluated_user_id,evaluated_by_user_id,team_id,campus_id,activity_name,activity_date,criteria_scores,criteria_total_score)
-        VALUES($1,$2,$3,1,'Workshop',CURRENT_TIMESTAMP,$4::jsonb,$5) RETURNING evaluation_id`,
-      [userId, actorId, teamId, JSON.stringify(input.scores), input.total])
-      await insert({ scores, total: 100 }); await insert({ scores, total: 100 })
-      assert.equal((await client.query('SELECT count(*)::int AS n FROM performance_evaluations WHERE evaluated_user_id=$1', [userId])).rows[0].n, 2)
-      for (const invalid of [{ scores: scores.slice(1), total: 100 }, { scores: [...scores, 0], total: 100 }, { scores, total: 101 }]) {
+
+      const scores83 = [85, 80, 90, 75]
+      const scores69 = [70, 65, 80, 60]
+
+      const insert = input => client.query(
+        `INSERT INTO performance_evaluations
+         (evaluated_user_id, evaluated_by_user_id, team_id,
+          campus_id, activity_name, activity_date,
+          criteria_scores, criteria_total_score)
+         VALUES ($1, $2, $3, 1, 'Workshop',
+                 CURRENT_TIMESTAMP, $4::jsonb, $5)
+         RETURNING evaluation_id`,
+        [managerId, actorId, teamId,
+         JSON.stringify(input.scores), input.total]
+      )
+
+      await insert({ scores: scores83, total: 83 })
+      await insert({ scores: scores69, total: 69 })
+
+      const result = await client.query(
+        `SELECT COUNT(*)::int AS count,
+                AVG(criteria_total_score)::numeric AS average
+         FROM performance_evaluations
+         WHERE evaluated_user_id = $1`,
+        [managerId]
+      )
+
+      assert.equal(result.rows[0].count, 2)
+      assert.equal(Number(result.rows[0].average), 76)
+
+      const invalidInputs = [
+        { scores: scores83.slice(1), total: 83 },
+        { scores: [...scores83, 0], total: 83 },
+        { scores: Array(15).fill(5), total: 75 },
+        { scores: scores83, total: 101 }
+      ]
+
+      for (const invalid of invalidInputs) {
         await client.query('SAVEPOINT invalid_evaluation')
-        await assert.rejects(insert(invalid), error => error.code === '23514')
-        await client.query('ROLLBACK TO SAVEPOINT invalid_evaluation')
-        await client.query('RELEASE SAVEPOINT invalid_evaluation')
+
+        try {
+          await assert.rejects(
+            insert(invalid),
+            error => error.code === '23514'
+          )
+        } finally {
+          await client.query('ROLLBACK TO SAVEPOINT invalid_evaluation')
+          await client.query('RELEASE SAVEPOINT invalid_evaluation')
+        }
       }
+
+      const finalCount = await client.query(
+        'SELECT COUNT(*)::int AS count FROM performance_evaluations'
+      )
+      assert.equal(finalCount.rows[0].count, 2)
     })
 
     await t.test('missing frontend destination never dispatches an invitation or marks it sending', async () => {
