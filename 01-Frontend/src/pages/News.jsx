@@ -1,3 +1,4 @@
+import { tr } from "../i18n/index.js";
 import { useState } from "react";
 import { ratingsApi } from "../services/ratings.js";
 import { useAsync } from "../hooks/useAsync.js";
@@ -16,7 +17,7 @@ export default function News() {
     try {
       await ratingsApi.saveNews(form);
       setForm(blank);
-      toast.success("تم حفظ الخبر");
+      toast.success(tr("تم حفظ الخبر"));
     } catch (e) {
       toast.error(e);
     } finally {
@@ -26,13 +27,13 @@ export default function News() {
   return (
     <>
       <PageHeader
-        title="أخبار المجتمع"
-        subtitle="الأخبار المنشورة تظهر تلقائيًا في صفحة الترحيب."
+        title={tr("أخبار المجتمع")}
+        subtitle={tr("الأخبار المنشورة تظهر تلقائيًا في صفحة الترحيب.")}
       />
       <Card>
         <form onSubmit={save}>
           <label className="f">
-            عنوان الخبر
+            {tr("عنوان الخبر")}
             <input
               required
               maxLength={160}
@@ -41,7 +42,7 @@ export default function News() {
             />
           </label>
           <label className="f">
-            نص الخبر
+            {tr("نص الخبر")}
             <textarea
               required
               maxLength={3000}
@@ -50,19 +51,19 @@ export default function News() {
             />
           </label>
           <label className="f">
-            الحالة
+            {tr("الحالة")}
             <select
               value={form.status}
               onChange={(e) => setForm({ ...form, status: e.target.value })}
             >
-              <option value="draft">مسودة</option>
-              <option value="published">منشور</option>
+              <option value="draft">{tr("مسودة")}</option>
+              <option value="published">{tr("منشور")}</option>
             </select>
           </label>
           <Button type="submit" variant="primary" disabled={busy}>
-            حفظ الخبر
+            {tr("حفظ الخبر")}
           </Button>{" "}
-          <Button onClick={() => setForm(blank)}>خبر جديد</Button>
+          <Button onClick={() => setForm(blank)}>{tr("خبر جديد")}</Button>
         </form>
       </Card>
       <Async state={state}>
@@ -71,9 +72,9 @@ export default function News() {
             <Card key={n.id}>
               <h3>{n.title}</h3>
               <p>
-                {n.status === "published" ? "منشور" : "مسودة"} · {n.date}
+                {n.status === "published" ? tr("منشور") : tr("مسودة")} · {n.date}
               </p>
-              <Button onClick={() => setForm({ ...n })}>تعديل</Button>
+              <Button onClick={() => setForm({ ...n })}>{tr("تعديل")}</Button>
             </Card>
           ))
         }

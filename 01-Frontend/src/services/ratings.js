@@ -1,5 +1,6 @@
 import { api } from "./call.js";
 import { http } from "./http.js";
+import { backend } from "./backend/index.js";
 import * as E from "./mock/ratings.js";
 export const ratingsApi = {
   targets: () => api(E.targets, () => http.get("/ratings/targets")),
@@ -16,7 +17,7 @@ export const ratingsApi = {
   hall: (campus, month) =>
     api(
       (d, a) => E.hall(d, a, { campus, month }),
-      () => http.get("/public/hall", { campus, month }, { auth: false }),
+      () => backend.hall({ campus, month }),
       { public: true },
     ),
   selectWinner: (body) =>

@@ -12,6 +12,12 @@ import { ConfirmDialog, ReasonDialog } from '../../components/ui/Dialog.jsx';
 import { FilterBar, Segmented, Select } from '../../components/ui/Form.jsx';
 import { Avatar, Button, Card, IconButton, PageHeader } from '../../components/ui/Primitives.jsx';
 import { Async } from '../../components/ui/States.jsx';
+import { tr } from '../../i18n/index.js';
+
+const boldName = (key, name) => {
+  const [a, b] = tr(key, { name: '\u0000' }).split('\u0000');
+  return <>{a}<b>{name}</b>{b}</>;
+};
 
 export default function Members() {
   const { user: me } = useAuth();
@@ -25,29 +31,29 @@ export default function Members() {
   const close = () => setDlg(null);
   const done = () => state.reload({ silent: true });
 
-  const teamOpts = [['', 'كل الفرق'], ...(meta ? meta.teams : []).filter((t) => !f.campus || t.campus === f.campus).map((t) => [t.id, `${CAMPUS[t.campus]} · ${t.name}`])];
+  const teamOpts = [['', tr('كل الفرق')], ...(meta ? meta.teams : []).filter((t) => !f.campus || t.campus === f.campus).map((t) => [t.id, `${tr(CAMPUS[t.campus])} · ${t.name}`])];
 
   const columns = [
     {
-      title: 'الاسم', sort: (u) => u.name,
+      title: tr('الاسم'), sort: (u) => u.name,
       render: (u) => (
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <Avatar name={u.name} />
-          <div>{u.name}{u.id === me.id && <> <Badge tone="b">أنت</Badge></>}<div className="sub" dir="ltr" style={{ textAlign: 'start' }}>{u.email}</div></div>
+          <div>{u.name}{u.id === me.id && <> <Badge tone="b">{tr('أنت')}</Badge></>}<div className="sub" dir="ltr" style={{ textAlign: 'start' }}>{u.email}</div></div>
         </div>
       ),
     },
-    { title: 'الحرم', sort: (u) => u.campus, render: (u) => <CampusBadge campus={u.campus} /> },
-    { title: 'الفريق', sort: (u) => u.teamsLabel, render: (u) => u.teamsLabel },
-    { title: 'الدور', sort: (u) => u.role, render: (u) => <RoleBadge role={u.role} /> },
-    { title: 'الحالة', render: (u) => <UserStatusBadge status={u.status} /> },
+    { title: tr('الحرم'), sort: (u) => u.campus, render: (u) => <CampusBadge campus={u.campus} /> },
+    { title: tr('الفريق'), sort: (u) => u.teamsLabel, render: (u) => u.teamsLabel },
+    { title: tr('الدور'), sort: (u) => u.role, render: (u) => <RoleBadge role={u.role} /> },
+    { title: tr('الحالة'), render: (u) => <UserStatusBadge status={u.status} /> },
     {
-      title: 'إجراءات',
-      render: (u) => (u.status === 'deleted' ? <Button small onClick={() => setDlg({ type: 'restore', u })}>استرجاع</Button> : (
+      title: tr('إجراءات'),
+      render: (u) => (u.status === 'deleted' ? <Button small onClick={() => setDlg({ type: 'restore', u })}>{tr('استرجاع')}</Button> : (
         <div className="ia">
-          <IconButton icon="edit" label="تعديل" onClick={() => setDlg({ type: 'edit', u })} />
-          <IconButton icon={u.status === 'active' ? 'user-off' : 'user-check'} label={u.status === 'active' ? 'تعطيل' : 'تفعيل'} onClick={() => setDlg({ type: 'toggle', u })} />
-          <IconButton icon="trash" label="حذف ناعم" onClick={() => setDlg({ type: 'delete', u })} />
+          <IconButton icon="edit" label={tr('تعديل')} onClick={() => setDlg({ type: 'edit', u })} />
+          <IconButton icon={u.status === 'active' ? 'user-off' : 'user-check'} label={u.status === 'active' ? tr('تعطيل') : tr('تفعيل')} onClick={() => setDlg({ type: 'toggle', u })} />
+          <IconButton icon="trash" label={tr('حذف ناعم')} onClick={() => setDlg({ type: 'delete', u })} />
         </div>
       )),
     },
@@ -55,17 +61,17 @@ export default function Members() {
 
   return (
     <>
-      <PageHeader title="الأعضاء" subtitle="إدارة المستخدمين، التعطيل، الحذف الناعم والاسترجاع" crumb="الأعضاء" actions={<Button variant="primary" icon="user-plus" onClick={() => setDlg({ type: 'add' })}>إضافة مستخدم</Button>} />
-      <Segmented style={{ marginBottom: 10 }} value={f.tab} onChange={set('tab')} options={[['active', 'القائمة'], ['deleted', 'المحذوفون']]} />
+      <PageHeader title={tr('الأعضاء')} subtitle={tr('إدارة المستخدمين، التعطيل، الحذف الناعم والاسترجاع')} crumb={tr('الأعضاء')} actions={<Button variant="primary" icon="user-plus" onClick={() => setDlg({ type: 'add' })}>{tr('إضافة مستخدم')}</Button>} />
+      <Segmented style={{ marginBottom: 10 }} value={f.tab} onChange={set('tab')} options={[['active', tr('القائمة')], ['deleted', tr('المحذوفون')]]} />
       <FilterBar>
-        <Select label="الحرم" value={f.campus} onChange={set('campus')} options={[['', 'كل الحرمين'], ['jenin', 'جنين'], ['ramallah', 'رام الله']]} />
-        <Select label="الفريق" value={f.teamId} onChange={set('teamId')} options={teamOpts} />
-        <Select label="الدور" value={f.role} onChange={set('role')} options={[['', 'كل الأدوار'], ['member', 'Member'], ['manager', 'Manager'], ['organizer', 'Organizer']]} />
-        {!deleted && <Select label="الحالة" value={f.status} onChange={set('status')} options={[['', 'كل الحالات'], ['active', 'نشط'], ['disabled', 'معطّل']]} />}
+        <Select label={tr('الحرم')} value={f.campus} onChange={set('campus')} options={[['', tr('كل الحرمين')], ['jenin', tr('جنين')], ['ramallah', tr('رام الله')]]} />
+        <Select label={tr('الفريق')} value={f.teamId} onChange={set('teamId')} options={teamOpts} />
+        <Select label={tr('الدور')} value={f.role} onChange={set('role')} options={[['', tr('كل الأدوار')], ['member', 'Member'], ['manager', 'Manager'], ['organizer', 'Organizer']]} />
+        {!deleted && <Select label={tr('الحالة')} value={f.status} onChange={set('status')} options={[['', tr('كل الحالات')], ['active', tr('نشط')], ['disabled', tr('معطّل')]]} />}
       </FilterBar>
       <Card>
         <Async state={state}>
-          {(rows) => <DataTable columns={columns} rows={rows} searchText={(u) => `${u.name} ${u.email}`} emptyTitle={deleted ? 'لا يوجد محذوفون' : 'لا يوجد أعضاء بهذه التصفية'} />}
+          {(rows) => <DataTable columns={columns} rows={rows} searchText={(u) => `${u.name} ${u.email}`} emptyTitle={deleted ? tr('لا يوجد محذوفون') : tr('لا يوجد أعضاء بهذه التصفية')} />}
         </Async>
       </Card>
 
@@ -73,23 +79,23 @@ export default function Members() {
       {dlg && dlg.type === 'edit' && <UserDialog user={dlg.u} kind={dlg.u.role === 'manager' ? 'manager' : 'user'} onDone={done} onClose={close} />}
       {dlg && dlg.type === 'toggle' && (
         <ReasonDialog
-          title={dlg.u.status === 'active' ? 'تعطيل الحساب' : 'إعادة تفعيل الحساب'} danger={dlg.u.status === 'active'}
-          confirmLabel={dlg.u.status === 'active' ? 'تعطيل' : 'تفعيل'} description={<b>{dlg.u.name}</b>} onClose={close}
-          onConfirm={async (r) => { await usersApi.toggleUserStatus(dlg.u.id, r); toast.success(dlg.u.status === 'active' ? 'تم تعطيل الحساب' : 'تمت إعادة التفعيل'); done(); }}
+          title={dlg.u.status === 'active' ? tr('تعطيل الحساب') : tr('إعادة تفعيل الحساب')} danger={dlg.u.status === 'active'}
+          confirmLabel={dlg.u.status === 'active' ? tr('تعطيل') : tr('تفعيل')} description={<b>{dlg.u.name}</b>} onClose={close}
+          onConfirm={async (r) => { await usersApi.toggleUserStatus(dlg.u.id, r); toast.success(dlg.u.status === 'active' ? tr('تم تعطيل الحساب') : tr('تمت إعادة التفعيل')); done(); }}
         />
       )}
       {dlg && dlg.type === 'delete' && (
         <ReasonDialog
-          title="حذف ناعم" danger confirmLabel="حذف" onClose={close}
-          description={<>سيختفي <b>{dlg.u.name}</b> من القوائم وتبقى سجلاته محفوظة، ويمكن استرجاعه لاحقًا.</>}
-          onConfirm={async (r) => { await usersApi.deleteUser(dlg.u.id, r); toast.success('تم الحذف الناعم'); done(); }}
+          title={tr('حذف ناعم')} danger confirmLabel={tr('حذف')} onClose={close}
+          description={boldName('سيختفي {name} من القوائم وتبقى سجلاته محفوظة، ويمكن استرجاعه لاحقًا.', dlg.u.name)}
+          onConfirm={async (r) => { await usersApi.deleteUser(dlg.u.id, r); toast.success(tr('تم الحذف الناعم')); done(); }}
         />
       )}
       {dlg && dlg.type === 'restore' && (
         <ConfirmDialog
-          title="استرجاع الحساب" confirmLabel="استرجاع" onClose={close}
-          message={<>سيعود <b>{dlg.u.name}</b> إلى القوائم بحالة معطّل حتى تفعّله.</>}
-          onConfirm={async () => { await usersApi.restoreUser(dlg.u.id); toast.success('تم الاسترجاع'); done(); }}
+          title={tr('استرجاع الحساب')} confirmLabel={tr('استرجاع')} onClose={close}
+          message={boldName('سيعود {name} إلى القوائم بحالة معطّل حتى تفعّله.', dlg.u.name)}
+          onConfirm={async () => { await usersApi.restoreUser(dlg.u.id); toast.success(tr('تم الاسترجاع')); done(); }}
         />
       )}
     </>

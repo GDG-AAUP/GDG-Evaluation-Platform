@@ -3,6 +3,7 @@ import jenin from "../assets/branches/jenin.jpg";
 import ramallah from "../assets/branches/ramallah.jpg";
 import { useAuth } from "./AuthContext.jsx";
 import { useEffect } from "react";
+import { tr } from '../i18n/index.js';
 
 
 const Context = createContext(null);
@@ -33,7 +34,7 @@ export const useBranch = () => useContext(Context);
 export function BranchSwitcher() {
   const { branch, setBranch } = useBranch();
   return (
-    <div className="branch-switch" aria-label="اختر الفرع">
+    <div className="branch-switch" aria-label={tr('اختر الفرع')}>
       {[
         ["jenin", "جنين"],
         ["ramallah", "رام الله"],
@@ -43,7 +44,7 @@ export function BranchSwitcher() {
           aria-pressed={branch === id}
           onClick={() => setBranch(id)}
         >
-          {name}
+          {tr(name)}
         </button>
       ))}
     </div>

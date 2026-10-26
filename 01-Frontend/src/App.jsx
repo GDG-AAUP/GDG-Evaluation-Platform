@@ -4,8 +4,13 @@ import { useEffect } from "react";
 import { AppDataProvider } from "./context/AppDataContext.jsx";
 import { AuthProvider, useAuth } from "./context/AuthContext.jsx";
 import { ThemeProvider } from "./context/ThemeContext.jsx";
+import { DirectionProvider } from "./context/DirectionContext.jsx";
 import { ToastProvider } from "./context/ToastContext.jsx";
-import { HOME_BY_ROLE } from "./lib/constants.js";
+import { USE_MOCK } from "./config.js";
+import { homeFor } from "./lib/home.js";
+import { isComingSoon } from "./lib/availability.js";
+import ComingSoon from "./pages/ComingSoon.jsx";
+import MyPointsLedger from "./pages/MyPointsLedger.jsx";
 import AppShell from "./components/layout/AppShell.jsx";
 import { Forbidden, NotFound, Skeleton } from "./components/ui/States.jsx";
 import Login from "./pages/Login.jsx";
@@ -26,7 +31,7 @@ function Routes() {
     if (!user && !["/", "/login", ""].includes(path))
       navigate("/login", { replace: true });
     else if (user && path === "/login")
-      navigate(HOME_BY_ROLE[user.role], { replace: true });
+      navigate(homeFor(user.role), { replace: true });
   }, [ready, user, path]);
 
   if (!ready)
@@ -49,7 +54,11 @@ function Routes() {
   }
   let body;
 
-if (path === "/activities") {
+if (isComingSoon(path, USE_MOCK)) {
+  body = <ComingSoon />;
+} else if (!USE_MOCK && path === "/my-points" && ["member", "manager"].includes(user.role)) {
+  body = <MyPointsLedger />;
+} else if (path === "/activities") {
   body = <Activities />;
 } else if (
   path === "/my-points" &&
@@ -70,6 +79,7 @@ if (path === "/activities") {
 export default function App() {
   return (
     <ThemeProvider>
+      <DirectionProvider>
       <ToastProvider>
         <AuthProvider>
           <AppDataProvider>
@@ -79,6 +89,7 @@ export default function App() {
           </AppDataProvider>
         </AuthProvider>
       </ToastProvider>
+      </DirectionProvider>
     </ThemeProvider>
   );
 }

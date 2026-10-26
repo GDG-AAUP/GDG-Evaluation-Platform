@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { tr } from "../i18n/index.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useAppData } from "../context/AppDataContext.jsx";
 import { useAsync } from "../hooks/useAsync.js";
@@ -35,12 +36,12 @@ export default function MyPoints()  {
   return (
     <>
       <PageHeader
-        title="تقييمي العام"
-        subtitle="تابع تقييم أدائك ونقاط أنشطتك وسجل تقدمك الشهري"
+        title={tr("تقييمي العام")}
+        subtitle={tr("تابع تقييم أدائك ونقاط أنشطتك وسجل تقدمك الشهري")}
       />
 
       <label className="f activity-month">
-        الشهر
+        {tr("الشهر")}
         <select
           value={selectedMonth}
           onChange={(event) => setMonth(event.target.value)}
@@ -64,67 +65,67 @@ export default function MyPoints()  {
             <div className="evaluation-overview">
               <div className="evaluation-summary-grid">
                 <Card>
-                  <h2>تقييم الأداء</h2>
+                  <h2>{tr("تقييم الأداء")}</h2>
 
                   <strong className="evaluation-big-number">
-                    {current ? `${current.total} / 100` : "لم تُقيّم بعد"}
+                    {current ? `${current.total} / 100` : tr("لم تُقيّم بعد")}
                   </strong>
 
-                  <p>نتيجة آخر بطاقة تقييم معتمدة لهذا الشهر.</p>
+                  <p>{tr("نتيجة آخر بطاقة تقييم معتمدة لهذا الشهر.")}</p>
 
                   {current && (
                     <progress
                       className="activity-progress"
                       max={100}
                       value={current.total}
-                      aria-label="تقييم الأداء"
+                      aria-label={tr("تقييم الأداء")}
                     />
                   )}
                 </Card>
 
                 <Card>
-                  <h2>تقييم الأنشطة</h2>
+                  <h2>{tr("تقييم الأنشطة")}</h2>
 
                   <strong className="evaluation-big-number">
                     {percentage.toFixed(2)}%
                   </strong>
 
                   <p>
-                    مجموع نقاطك: <strong>{total}</strong>
+                    {tr("مجموع نقاطك:")} <strong>{total}</strong>
                     {" · "}
-                    عدد الأنشطة: <strong>{entries.length}</strong>
+                    {tr("عدد الأنشطة:")} <strong>{entries.length}</strong>
                   </p>
 
                   <progress
                     className="activity-progress"
                     max={100}
                     value={percentage}
-                    aria-label="نسبة نقاط الأنشطة"
+                    aria-label={tr("نسبة نقاط الأنشطة")}
                   />
 
                   <p>
-                    نسبتك من إجمالي نقاط أنشطة الجميع: {everyoneTotal} نقطة.
+                    {tr("نسبتك من إجمالي نقاط أنشطة الجميع: {n} نقطة.", { n: everyoneTotal })}
                   </p>
 
                   <small>
                     {locked
-                      ? "نتائج الشهر مقفلة."
-                      : "تتغير النسبة مع إضافة أنشطة جديدة خلال الشهر."}
+                      ? tr("نتائج الشهر مقفلة.")
+                      : tr("تتغير النسبة مع إضافة أنشطة جديدة خلال الشهر.")}
                   </small>
                 </Card>
               </div>
 
               <Card>
-                <h2>تفاصيل تقييم الأداء</h2>
+                <h2>{tr("تفاصيل تقييم الأداء")}</h2>
 
                 {!current ? (
-                  <p>لم يُسجل تقييم أداء لهذا الشهر.</p>
+                  <p>{tr("لم يُسجل تقييم أداء لهذا الشهر.")}</p>
                 ) : (
                   <>
                     <div className="scorecard-grid">
                       {SCORECARD_CATEGORIES.map((category) => (
                         <div className="score-field" key={category.id}>
-                          <span>{category.label}</span>
+                          <span>{tr(category.label)}</span>
                           <strong>
                             {current.scores[category.id]} / {category.max}
                           </strong>
@@ -133,33 +134,33 @@ export default function MyPoints()  {
                     </div>
 
                     <p className="evaluation-description">
-                      {current.reason}
+                      {tr(current.reason)}
                     </p>
                   </>
                 )}
               </Card>
 
               <Card>
-                <h2>سجل تقييمات الأداء</h2>
+                <h2>{tr("سجل تقييمات الأداء")}</h2>
 
                 {performance.history.length === 0 ? (
-                  <p>لا توجد تقييمات لهذا الشهر.</p>
+                  <p>{tr("لا توجد تقييمات لهذا الشهر.")}</p>
                 ) : (
                   [...performance.history]
                     .sort((a, b) => b.rev - a.rev)
                     .map((entry) => (
                       <article className="activity-entry" key={entry.id}>
                         <div className="activity-entry-heading">
-                          <h3>الإصدار {entry.rev}</h3>
+                          <h3>{tr("الإصدار {n}", { n: entry.rev })}</h3>
                           <strong>{entry.total} / 100</strong>
                         </div>
 
                         <p className="evaluation-description">
-                          {entry.reason}
+                          {tr(entry.reason)}
                         </p>
 
                         <small>
-                          بواسطة {entry.actorName}
+                          {tr("بواسطة {name}", { name: entry.actorName })}
                           {" · "}
                           {new Date(entry.ts).toLocaleDateString("ar")}
                         </small>
@@ -169,24 +170,24 @@ export default function MyPoints()  {
               </Card>
 
               <Card>
-                <h2>سجل الأنشطة</h2>
+                <h2>{tr("سجل الأنشطة")}</h2>
 
                 {entries.length === 0 ? (
-                  <p>لم تُسجل أنشطة لهذا الشهر.</p>
+                  <p>{tr("لم تُسجل أنشطة لهذا الشهر.")}</p>
                 ) : (
                   entries.map((entry) => (
                     <article className="activity-entry" key={entry.id}>
                       <div className="activity-entry-heading">
-                        <h3>{entry.label}</h3>
-                        <strong>{entry.points} نقطة</strong>
+                        <h3>{tr(entry.label)}</h3>
+                        <strong>{tr("{n} نقطة", { n: entry.points })}</strong>
                       </div>
 
                       <p className="evaluation-description">
-                        {entry.description}
+                        {tr(entry.description)}
                       </p>
 
                       <small>
-                        بواسطة {entry.actorName}
+                        {tr("بواسطة {name}", { name: entry.actorName })}
                         {" · "}
                         {new Date(entry.ts).toLocaleDateString("ar")}
                       </small>

@@ -1,3 +1,4 @@
+import { tr } from "../i18n/index.js";
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useAppData } from "../context/AppDataContext.jsx";
@@ -23,7 +24,7 @@ function RatingJumpLinks() {
   if (user.role !== "organizer") return null;
 
   return (
-    <nav className="rating-jump-links" aria-label="انتقل إلى قسم التقييم">
+    <nav className="rating-jump-links" aria-label={tr("انتقل إلى قسم التقييم")}>
       <a href="#rating-managers"
         onClick={(event) => {
           event.preventDefault();
@@ -35,7 +36,7 @@ function RatingJumpLinks() {
           });
         }}
       >
-        ✦ المديرون
+        ✦ {tr("المديرون")}
       </a>
 
       <a href="#rating-members"
@@ -49,7 +50,7 @@ function RatingJumpLinks() {
           });
         }}
       >
-        ✧ الأعضاء
+        ✧ {tr("الأعضاء")}
       </a>
 
       <a href="#rating-organizers"
@@ -63,7 +64,7 @@ function RatingJumpLinks() {
           });
         }}
       >
-        ⚡ المنظّمون
+        ⚡ {tr("المنظّمون")}
       </a>
     </nav>
   );
@@ -77,20 +78,20 @@ function ActivityPerson({ person }) {
       </div>
 
       <p>
-        {CAMPUS[person.campus]} · {person.teamsLabel}
+        {tr(CAMPUS[person.campus])} · {tr(person.teamsLabel)}
       </p>
 
       <div className="activity-statistics">
         <div>
           <strong>{person.total}</strong>
-          <span>نقاط الأنشطة</span>
+          <span>{tr("نقاط الأنشطة")}</span>
         </div>
 
         <div>
           <strong dir="ltr">
             {person.percentage.toFixed(2)}%
           </strong>
-          <span>من مجموع نقاط الجميع في الفرعين</span>
+          <span>{tr("من مجموع نقاط الجميع في الفرعين")}</span>
         </div>
       </div>
 
@@ -98,22 +99,22 @@ function ActivityPerson({ person }) {
         className="activity-progress"
         max={100}
         value={person.percentage}
-        aria-label={`نسبة نقاط ${person.name}`}
+        aria-label={tr("نسبة نقاط {name}", { name: person.name })}
       />
 
       <details className="activity-history">
         <summary>
-          سجل الأنشطة ({person.entries.length})
+          {tr("سجل الأنشطة ({n})", { n: person.entries.length })}
         </summary>
 
         {!person.entries.length ? (
-          <p>لم تُسجل أنشطة لهذا الشهر.</p>
+          <p>{tr("لم تُسجل أنشطة لهذا الشهر.")}</p>
         ) : (
           person.entries.map((entry) => (
             <article className="activity-entry" key={entry.id}>
               <div className="activity-entry-heading">
                 <h4>{entry.label}</h4>
-                <strong>{entry.points} نقطة</strong>
+                <strong>{tr("{n} نقطة", { n: entry.points })}</strong>
               </div>
 
               <p style={{ whiteSpace: "pre-wrap" }}>
@@ -121,7 +122,7 @@ function ActivityPerson({ person }) {
               </p>
 
               <small>
-                بواسطة {entry.actorName}
+                {tr("بواسطة {name}", { name: entry.actorName })}
                 {" · "}
                 {new Date(entry.ts).toLocaleDateString("ar")}
               </small>
@@ -207,10 +208,10 @@ function ActivitySection({
         userId: previous.userId,
       }));
 
-      setSuccess("تم حفظ النشاط وإضافة النقاط.");
+      setSuccess(tr("تم حفظ النشاط وإضافة النقاط."));
       onSaved();
     } catch (err) {
-      setError(err?.message || "تعذر حفظ النشاط.");
+      setError(tr(err?.message || "تعذر حفظ النشاط."));
     } finally {
       setBusy(false);
     }
@@ -240,8 +241,8 @@ function ActivitySection({
         <Card>
           <h3>
             {managerSection
-              ? "إضافة نشاط لمدير"
-              : "إضافة تقييم نشاط"}
+              ? tr("إضافة نشاط لمدير")
+              : tr("إضافة تقييم نشاط")}
           </h3>
 
           <form onSubmit={submit}>
@@ -250,7 +251,7 @@ function ActivitySection({
               disabled={busy || locked || targets.length === 0}
             >
               <label className="f">
-                {managerSection ? "المدير" : "الشخص"}
+                {managerSection ? tr("المدير") : tr("الشخص")}
 
                 <select
                   name="userId"
@@ -258,31 +259,31 @@ function ActivitySection({
                   onChange={changeField}
                   required
                 >
-                  <option value="">اختر الشخص</option>
+                  <option value="">{tr("اختر الشخص")}</option>
 
                   {targets.map((person) => (
                     <option key={person.id} value={person.id}>
-                      {person.name} — {CAMPUS[person.campus]}
+                      {person.name} — {tr(CAMPUS[person.campus])}
                     </option>
                   ))}
                 </select>
               </label>
 
               <label className="f">
-                اسم النشاط
+                {tr("اسم النشاط")}
 
                 <input
                   name="label"
                   value={form.label}
                   onChange={changeField}
                   maxLength={160}
-                  placeholder="مثال: تنظيم ورشة React"
+                  placeholder={tr("مثال: تنظيم ورشة React")}
                   required
                 />
               </label>
 
               <label className="f">
-                نقاط النشاط — من 0 إلى 99
+                {tr("نقاط النشاط — من 0 إلى 99")}
 
                 <input
                   type="number"
@@ -299,13 +300,13 @@ function ActivitySection({
 
                 {pointsInvalid && (
                   <small className="activity-error">
-                    أدخل عددًا صحيحًا من 0 إلى 99.
+                    {tr("أدخل عددًا صحيحًا من 0 إلى 99.")}
                   </small>
                 )}
               </label>
 
               <label className="f">
-                اشرح أكثر عن النشاط من أجل صفحة الواجهة — مطلوب
+                {tr("اشرح أكثر عن النشاط من أجل صفحة الواجهة — مطلوب")}
 
                 <textarea
                   name="description"
@@ -313,7 +314,7 @@ function ActivitySection({
                   onChange={changeField}
                   maxLength={2000}
                   rows={4}
-                  placeholder="وضح النشاط ومساهمة الشخص فيه..."
+                  placeholder={tr("وضح النشاط ومساهمة الشخص فيه...")}
                   required
                 />
               </label>
@@ -323,18 +324,18 @@ function ActivitySection({
                 className="activity-submit"
                 disabled={busy || locked || !complete}
               >
-                {busy ? "جارٍ الحفظ..." : "حفظ النشاط"}
+                {busy ? tr("جارٍ الحفظ...") : tr("حفظ النشاط")}
               </button>
             </fieldset>
           </form>
 
           {locked && (
-            <p className="sub">هذا الشهر مقفل للعرض فقط.</p>
+            <p className="sub">{tr("هذا الشهر مقفل للعرض فقط.")}</p>
           )}
 
           {!targets.length && (
             <p className="sub">
-              لا يوجد أشخاص متاحون للتقييم في هذا القسم.
+              {tr("لا يوجد أشخاص متاحون للتقييم في هذا القسم.")}
             </p>
           )}
 
@@ -355,7 +356,7 @@ function ActivitySection({
       </div>
 
       {!sorted.length && (
-        <p className="sub">لا توجد سجلات لأشخاص في هذا القسم.</p>
+        <p className="sub">{tr("لا توجد سجلات لأشخاص في هذا القسم.")}</p>
       )}
     </section>
   );
@@ -378,13 +379,13 @@ export default function Activities() {
   return (
     <div className="role-ratings-page">
       <PageHeader
-        title="تقييم الأنشطة"
-        subtitle="أنشطة شهرية ونقاط مستقلة عن تقييم الأداء"
+        title={tr("تقييم الأنشطة")}
+        subtitle={tr("أنشطة شهرية ونقاط مستقلة عن تقييم الأداء")}
       />
       <RatingJumpLinks />
 
       <label className="f activity-month">
-        الشهر
+        {tr("الشهر")}
         <select
           value={selectedMonth}
           onChange={(event) => setMonth(event.target.value)}
@@ -430,15 +431,14 @@ export default function Activities() {
           return (
             <div className="activities-page">
               <Card>
-                <h2>إجمالي نقاط الأنشطة: {data.everyoneTotal}</h2>
+                <h2>{tr("إجمالي نقاط الأنشطة: {n}", { n: data.everyoneTotal })}</h2>
                 <p>
-                  النسبة = نقاط الشخص ÷ نقاط جميع الأشخاص
-                  في الفرعين لهذا الشهر × 100.
+                  {tr("النسبة = نقاط الشخص ÷ نقاط جميع الأشخاص في الفرعين لهذا الشهر × 100.")}
                 </p>
                 <p>
                   {data.locked
-                    ? "هذا الشهر مقفل — النتائج للعرض فقط."
-                    : "تتحدث النسب مع إضافة الأنشطة خلال الشهر."}
+                    ? tr("هذا الشهر مقفل — النتائج للعرض فقط.")
+                    : tr("تتحدث النسب مع إضافة الأنشطة خلال الشهر.")}
                 </p>
               </Card>
 
@@ -448,8 +448,8 @@ export default function Activities() {
                   id="rating-managers"
                     {...sectionProps}
                     key={`managers-${data.month}`}
-                    title="تقييم أنشطة المديرين"
-                    description="قسم خاص بالمنظّم لتوثيق أنشطة مديري المجموعات."
+                    title={tr("تقييم أنشطة المديرين")}
+                    description={tr("قسم خاص بالمنظّم لتوثيق أنشطة مديري المجموعات.")}
                     people={managers}
                     managerSection
                     canCreate
@@ -459,8 +459,8 @@ export default function Activities() {
                   id="rating-members"
                     {...sectionProps}
                     key={`members-${data.month}`}
-                    title="تقييم أنشطة الأعضاء"
-                    description="سجّل أنشطة أعضاء المجموعات في الفرعين."
+                    title={tr("تقييم أنشطة الأعضاء")}
+                    description={tr("سجّل أنشطة أعضاء المجموعات في الفرعين.")}
                     people={members}
                     canCreate
                   />
@@ -470,8 +470,8 @@ export default function Activities() {
                       id="rating-organizers"
                       {...sectionProps}
                       key={`organizers-${data.month}`}
-                      title="أنشطة المنظّمين الآخرين"
-                      description="يمكنك تسجيل الأنشطة للمنظّمين الآخرين باستثناء نفسك."
+                      title={tr("أنشطة المنظّمين الآخرين")}
+                      description={tr("يمكنك تسجيل الأنشطة للمنظّمين الآخرين باستثناء نفسك.")}
                       people={organizers}
                       canCreate
                     />
@@ -483,8 +483,8 @@ export default function Activities() {
                 <ActivitySection
                   {...sectionProps}
                   key={`team-${data.month}`}
-                  title="تقييم أنشطة أعضاء فريقي"
-                  description="الأعضاء التابعون لمجموعتك وفرعك فقط."
+                  title={tr("تقييم أنشطة أعضاء فريقي")}
+                  description={tr("الأعضاء التابعون لمجموعتك وفرعك فقط.")}
                   people={members}
                   canCreate
                 />
@@ -493,8 +493,8 @@ export default function Activities() {
               <ActivitySection
                 {...sectionProps}
                 key={`personal-${data.month}`}
-                title="أنشطتي ونقاطي"
-                description="سجلك الشخصي للعرض فقط؛ لا يمكنك تقييم نفسك."
+                title={tr("أنشطتي ونقاطي")}
+                description={tr("سجلك الشخصي للعرض فقط؛ لا يمكنك تقييم نفسك.")}
                 people={personal}
                 canCreate={false}
               />

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { tr } from "../i18n/index.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useAppData } from "../context/AppDataContext.jsx";
 import { useAsync } from "../hooks/useAsync.js";
@@ -19,7 +20,7 @@ function RatingJumpLinks() {
   if (user.role !== "organizer") return null;
 
   return (
-    <nav className="rating-jump-links" aria-label="انتقل إلى قسم التقييم">
+    <nav className="rating-jump-links" aria-label={tr("انتقل إلى قسم التقييم")}>
       <a href="#rating-managers"
         onClick={(event) => {
           event.preventDefault();
@@ -31,7 +32,7 @@ function RatingJumpLinks() {
           });
         }}
       >
-        ✦ المديرون
+        {tr("✦ المديرون")}
       </a>
 
       <a href="#rating-members"
@@ -45,7 +46,7 @@ function RatingJumpLinks() {
           });
         }}
       >
-        ✧ الأعضاء
+        {tr("✧ الأعضاء")}
       </a>
 
       <a href="#rating-organizers"
@@ -59,7 +60,7 @@ function RatingJumpLinks() {
           });
         }}
       >
-        ⚡ المنظّمون
+        {tr("⚡ المنظّمون")}
       </a>
     </nav>
   );
@@ -97,7 +98,7 @@ function PerformanceSection({
       </div>
 
       {!sorted.length ? (
-        <p className="sub">لا يوجد أشخاص متاحون في هذا القسم.</p>
+        <p className="sub">{tr("لا يوجد أشخاص متاحون في هذا القسم.")}</p>
       ) : (
         <div className="rating-people">
           {sorted.map((person) => (
@@ -108,18 +109,18 @@ function PerformanceSection({
                 <div>
                   <h3>{person.name}</h3>
                   <span className="role-person-label">
-                    {managerSection ? "مدير مجموعة" : "تقييم الأداء"}
+                    {managerSection ? tr("مدير مجموعة") : tr("تقييم الأداء")}
                   </span>
                 </div>
               </div>
 
               <p>
-                {CAMPUS[person.campus]} · {person.teamsLabel}
+                {tr(CAMPUS[person.campus])} · {tr(person.teamsLabel)}
               </p>
 
               <strong className="role-performance-score">
                 {person.total === null
-                  ? "لم يُقيّم"
+                  ? tr("لم يُقيّم")
                   : `${person.total} / 100`}
               </strong>
 
@@ -127,7 +128,7 @@ function PerformanceSection({
                 variant="primary"
                 onClick={() => onRate(person.id)}
               >
-                {managerSection ? "تقييم أداء المدير" : "فتح تقييم الأداء"}
+                {managerSection ? tr("تقييم أداء المدير") : tr("فتح تقييم الأداء")}
               </Button>
             </Card>
           ))}
@@ -165,15 +166,15 @@ export default function Ratings() {
   return (
     <div className="role-ratings-page">
       <PageHeader
-        title="تقييم الأداء"
-        subtitle="15 بندًا ثابتًا · مجموع 100 نقطة · آخر تقييم هو المعتمد"
+        title={tr("تقييم الأداء")}
+        subtitle={tr("15 بندًا ثابتًا · مجموع 100 نقطة · آخر تقييم هو المعتمد")}
         actions={
           user.role !== "member" && (
             <Button
               variant="primary"
               onClick={() => setDlg("")}
             >
-              تقييم شخص
+              {tr("تقييم شخص")}
             </Button>
           )
         }
@@ -183,7 +184,7 @@ export default function Ratings() {
       {user.role !== "manager" && (
         <>
           <label className="f activity-month">
-            شهر تقييمي
+            {tr("شهر تقييمي")}
             <select
               value={month || meta?.curMonth || ""}
               onChange={(event) => setMonth(event.target.value)}
@@ -200,10 +201,10 @@ export default function Ratings() {
             {(data) => (
               <Card>
                 <h2>
-                  تقييمي ·{" "}
+                  {tr("تقييمي ·")}{" "}
                   {data.current
                     ? `${data.current.total} / 100`
-                    : "لم يُسجّل بعد"}
+                    : tr("لم يُسجّل بعد")}
                 </h2>
 
                 {data.current && (
@@ -214,7 +215,7 @@ export default function Ratings() {
                           className="score-field"
                           key={category.id}
                         >
-                          <span>{category.label}</span>
+                          <span>{tr(category.label)}</span>
                           <strong>
                             {data.current.scores[category.id]} /{" "}
                             {category.max}
@@ -223,17 +224,17 @@ export default function Ratings() {
                       ))}
                     </div>
 
-                    <p>{data.current.reason}</p>
+                    <p>{tr(data.current.reason)}</p>
 
                     <details>
                       <summary>
-                        سجل التقييمات ({data.history.length})
+                        {tr("سجل التقييمات ({n})", { n: data.history.length })}
                       </summary>
 
                       {data.history.map((entry) => (
                         <p key={entry.id}>
-                          الإصدار {entry.rev} · {entry.total}/100 ·{" "}
-                          {entry.actorName} · {entry.reason}
+                          {tr("الإصدار {n}", { n: entry.rev })} · {entry.total}/100 ·{" "}
+                          {entry.actorName} · {tr(entry.reason)}
                         </p>
                       ))}
                     </details>
@@ -250,7 +251,7 @@ export default function Ratings() {
           {(rows) => (
             <>
               <p className="sub">
-                بطاقات الأشخاص أدناه تخص الشهر الحالي:{" "}
+                {tr("بطاقات الأشخاص أدناه تخص الشهر الحالي:")}{" "}
                 {meta?.curMonth}
               </p>
 
@@ -258,8 +259,8 @@ export default function Ratings() {
                 <>
                   <PerformanceSection
                    id="rating-managers"
-                    title="تقييم المديرين"
-                    description="مساحة المنظّم لتقييم أداء مديري المجموعات."
+                    title={tr("تقييم المديرين")}
+                    description={tr("مساحة المنظّم لتقييم أداء مديري المجموعات.")}
                     managerSection
                     people={rows.filter(
                       (person) => person.role === "manager",
@@ -270,8 +271,8 @@ export default function Ratings() {
                   <PerformanceSection
                  
   id="rating-members"
-                    title="تقييم الأعضاء"
-                    description="قيّم أداء أعضاء المجموعات في الفرعين."
+                    title={tr("تقييم الأعضاء")}
+                    description={tr("قيّم أداء أعضاء المجموعات في الفرعين.")}
                     people={rows.filter(
                       (person) => person.role === "member",
                     )}
@@ -284,8 +285,8 @@ export default function Ratings() {
                     <PerformanceSection
                     
   id="rating-organizers"
-                      title="تقييم المنظّمين"
-                      description="يمكنك تقييم المنظّمين الآخرين باستثناء نفسك."
+                      title={tr("تقييم المنظّمين")}
+                      description={tr("يمكنك تقييم المنظّمين الآخرين باستثناء نفسك.")}
                       people={rows.filter(
                         (person) => person.role === "organizer",
                       )}
@@ -295,8 +296,8 @@ export default function Ratings() {
                 </>
               ) : (
                 <PerformanceSection
-                  title="تقييم أعضاء فريقي"
-                  description="الأعضاء المتاحون لك حسب مجموعتك وفرعك."
+                  title={tr("تقييم أعضاء فريقي")}
+                  description={tr("الأعضاء المتاحون لك حسب مجموعتك وفرعك.")}
                   people={rows}
                   onRate={setDlg}
                 />

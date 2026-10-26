@@ -9,6 +9,7 @@ import { Dialog, DialogActions, ReasonDialog } from '../../components/ui/Dialog.
 import { Field } from '../../components/ui/Form.jsx';
 import { Button, Card, Grid, PageHeader } from '../../components/ui/Primitives.jsx';
 import { Async } from '../../components/ui/States.jsx';
+import { tr } from '../../i18n/index.js';
 
 function TeamDialog({ team, campus, onDone, onClose }) {
   const toast = useToast();
@@ -25,7 +26,7 @@ function TeamDialog({ team, campus, onDone, onClose }) {
     setBusy(true); setErr('');
     try {
       await teamsApi.saveTeam({ id: team && team.id, campus: c, name, managerIds: chosen });
-      toast.success('تم الحفظ');
+      toast.success(tr('تم الحفظ'));
       onDone();
       onClose();
     } catch (e) { setErr(e.message); setBusy(false); }
@@ -33,10 +34,10 @@ function TeamDialog({ team, campus, onDone, onClose }) {
   const list = mgrs.data || [];
 
   return (
-    <Dialog title={team ? 'تعديل فريق' : `فريق جديد في ${CAMPUS[c]}`} onClose={onClose}>
-      <Field label="اسم الفريق">{(id) => <input id={id} type="text" value={name} placeholder="مثال: Design" onChange={(e) => { setName(e.target.value); setErr(''); }} />}</Field>
+    <Dialog title={team ? tr('تعديل فريق') : tr('فريق جديد في {campus}', { campus: tr(CAMPUS[c]) })} onClose={onClose}>
+      <Field label={tr('اسم الفريق')}>{(id) => <input id={id} type="text" value={name} placeholder={tr('مثال: Design')} onChange={(e) => { setName(e.target.value); setErr(''); }} />}</Field>
       <div className="f">
-        <label>{multipleManagersPerTeam ? 'المديرون' : 'المدير'}</label>
+        <label>{multipleManagersPerTeam ? tr('المديرون') : tr('المدير')}</label>
         {multipleManagersPerTeam ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {list.map((m) => (
@@ -46,16 +47,16 @@ function TeamDialog({ team, campus, onDone, onClose }) {
             ))}
           </div>
         ) : (
-          <select aria-label="المدير" value={chosen[0] || ''} onChange={(e) => setChosen(e.target.value ? [e.target.value] : [])}>
-            <option value="">بدون مدير</option>
+          <select aria-label={tr('المدير')} value={chosen[0] || ''} onChange={(e) => setChosen(e.target.value ? [e.target.value] : [])}>
+            <option value="">{tr('بدون مدير')}</option>
             {list.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
           </select>
         )}
       </div>
       {err && <p className="err" role="alert">{err}</p>}
       <DialogActions>
-        <Button variant="primary" onClick={save} disabled={busy || mgrs.loading}>حفظ</Button>
-        <Button onClick={onClose}>إلغاء</Button>
+        <Button variant="primary" onClick={save} disabled={busy || mgrs.loading}>{tr('حفظ')}</Button>
+        <Button onClick={onClose}>{tr('إلغاء')}</Button>
       </DialogActions>
     </Dialog>
   );
@@ -70,25 +71,25 @@ export default function Campuses() {
 
   return (
     <>
-      <PageHeader title="الحرمان والفرق" subtitle="إدارة الحرمين والفرق وتعيين المديرين" crumb="الحرمان والفرق" />
+      <PageHeader title={tr('الحرمان والفرق')} subtitle={tr('إدارة الحرمين والفرق وتعيين المديرين')} crumb={tr('الحرمان والفرق')} />
       <Async state={state}>
         {(teams) => (
           <Grid two>
             {CAMPUS_KEYS.map((c) => (
               <Card key={c}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                  <h3 style={{ margin: 0 }}><CampusBadge campus={c} /> حرم {CAMPUS[c]}</h3>
-                  <Button small icon="plus" onClick={() => setDlg({ type: 'edit', campus: c })}>فريق جديد</Button>
+                  <h3 style={{ margin: 0 }}><CampusBadge campus={c} /> {tr('حرم {campus}', { campus: tr(CAMPUS[c]) })}</h3>
+                  <Button small icon="plus" onClick={() => setDlg({ type: 'edit', campus: c })}>{tr('فريق جديد')}</Button>
                 </div>
                 {teams.filter((t) => t.campus === c).map((t) => (
                   <div className="le" key={t.id}>
                     <div style={{ flex: 1 }}>
-                      <b>{t.name}</b> {t.status === 'active' ? <Badge tone="g">فعّال</Badge> : <Badge tone="y">معطّل</Badge>}
-                      <div className="sub">المدير: {t.managers.map((m) => m.name).join('، ') || 'غير معيّن'} · {t.activeMembers} أعضاء</div>
+                      <b>{t.name}</b> {t.status === 'active' ? <Badge tone="g">{tr('فعّال')}</Badge> : <Badge tone="y">{tr('معطّل')}</Badge>}
+                      <div className="sub">{tr('المدير: {managers}', { managers: t.managers.map((m) => m.name).join('، ') || tr('غير معيّن') })} · {tr('{n} أعضاء', { n: t.activeMembers })}</div>
                     </div>
                     <div className="ia" style={{ gap: 6 }}>
-                      <Button small onClick={() => setDlg({ type: 'edit', team: t })}>تعديل</Button>
-                      <Button small onClick={() => setDlg({ type: 'toggle', team: t })}>{t.status === 'active' ? 'تعطيل' : 'تفعيل'}</Button>
+                      <Button small onClick={() => setDlg({ type: 'edit', team: t })}>{tr('تعديل')}</Button>
+                      <Button small onClick={() => setDlg({ type: 'toggle', team: t })}>{t.status === 'active' ? tr('تعطيل') : tr('تفعيل')}</Button>
                     </div>
                   </div>
                 ))}
@@ -100,11 +101,11 @@ export default function Campuses() {
       {dlg && dlg.type === 'edit' && <TeamDialog team={dlg.team} campus={dlg.campus} onDone={done} onClose={() => setDlg(null)} />}
       {dlg && dlg.type === 'toggle' && (
         <ReasonDialog
-          title={dlg.team.status === 'active' ? 'تعطيل الفريق' : 'تفعيل الفريق'} danger={dlg.team.status === 'active'}
-          confirmLabel={dlg.team.status === 'active' ? 'تعطيل' : 'تفعيل'}
-          description={<b>{dlg.team.name} - {CAMPUS[dlg.team.campus]}</b>}
+          title={dlg.team.status === 'active' ? tr('تعطيل الفريق') : tr('تفعيل الفريق')} danger={dlg.team.status === 'active'}
+          confirmLabel={dlg.team.status === 'active' ? tr('تعطيل') : tr('تفعيل')}
+          description={<b>{dlg.team.name} - {tr(CAMPUS[dlg.team.campus])}</b>}
           onClose={() => setDlg(null)}
-          onConfirm={async (r) => { await teamsApi.toggleTeam(dlg.team.id, r); toast.success('تم التحديث'); done(); }}
+          onConfirm={async (r) => { await teamsApi.toggleTeam(dlg.team.id, r); toast.success(tr('تم التحديث')); done(); }}
         />
       )}
     </>

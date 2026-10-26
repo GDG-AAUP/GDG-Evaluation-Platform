@@ -56,49 +56,34 @@ export const scoreOf = (db, userId, month) => {
   return c ? c.total : null;
 };
 
+/** Points from the activity ratings (Activities page) of one member in one month. */
+export const activityPointsOf = (db, userId, month) =>
+  (db.activityRatings || [])
+    .filter((e) => e.targetId === userId && e.month === month)
+    .reduce((sum, e) => sum + e.points, 0);
+
 /**
- * One row per (active, SCORED member, team) with the month score taken from the
- * current scorecard only (revisions never add up -> no double counting).
+ * Total points of a member in a month = points ledger (add / reverse points)
+ * + points of the activity ratings. This is the number the ranking is based on.
+ */
+export const pointsOf = (db, userId, month) =>
+  totalOf(db, userId, month) + activityPointsOf(db, userId, month);
+
+/**
+ * One row per (active member, active team of his campus). `total` = total points of the month.
+ * Members with no points still appear (total 0), like the backend ranking.
  */
 export function buildRows(db, month) {
-  const totals = new Map();
   const counts = new Map();
-
   for (const entry of db.activityRatings || []) {
     if (entry.month !== month) continue;
-
-    totals.set(
-      entry.targetId,
-      (totals.get(entry.targetId) || 0) + entry.points,
-    );
-
-    counts.set(
-      entry.targetId,
-      (counts.get(entry.targetId) || 0) + 1,
-    );
+    counts.set(entry.targetId, (counts.get(entry.targetId) || 0) + 1);
   }
 
-  // Same denominator used by the activity rating page:
-  // all activity points in both branches during this month.
-  const everyoneTotal = [...totals.values()].reduce(
-    (sum, value) => sum + value,
-    0,
-  );
-
   return db.users
-    .filter(
-      (user) =>
-        user.role === "member" &&
-        user.status === "active" &&
-        (totals.get(user.id) || 0) > 0,
-    )
-    .flatMap((user) => {
-      const activityPoints = totals.get(user.id) || 0;
-      const percentage = everyoneTotal
-        ? (activityPoints / everyoneTotal) * 100
-        : 0;
-
-      return user.teams
+    .filter((user) => user.role === "member" && user.status === "active")
+    .flatMap((user) =>
+      user.teams
         .filter((teamId) =>
           db.teams.some(
             (team) =>
@@ -111,32 +96,26 @@ export function buildRows(db, month) {
           userId: user.id,
           teamId,
           campus: user.campus,
-          total: percentage,
-          activityPoints,
+          total: pointsOf(db, user.id, month),
+          activityPoints: activityPointsOf(db, user.id, month),
           activityCount: counts.get(user.id) || 0,
-          kind: "activity",
-        }));
-    });
+          last: lastTs(db, user.id, month),
+          kind: "points",
+        })),
+    );
 }
 
 /**
- * Deterministic ranking (documented in README):
- *   1. total score desc
- *   2. core score (cat1..cat5) desc
- *   3. earlier current-revision timestamp first (legacy snapshots: earlier last entry)
- *   4. name (Arabic collation) asc
- *   5. user id asc
- * Archived months read from the frozen snapshot.
+ * Ranking by total points of the month (highest first). Equal totals share the same rank
+ * (dense ranking, like the backend) and are listed alphabetically; `tie` marks them.
+ * Archived months read the frozen snapshot.
  */
 export function rankRows(db, month, filters = {}) {
   const snapshot = db.snaps?.[month];
 
-  // Use activity snapshots when available.
-  // Old performance snapshots are never used as activity rankings.
-  let rows =
-    snapshot?.kind === "activity"
-      ? snapshot.rows.map((row) => ({ ...row }))
-      : buildRows(db, month);
+  let rows = snapshot
+    ? snapshot.rows.map((row) => ({ ...row }))
+    : buildRows(db, month);
 
   if (filters.campus) {
     rows = rows.filter((row) => row.campus === filters.campus);
@@ -249,7 +228,7 @@ export function closeMonthCore(db, actorId, labelOf) {
   Object.values(db.awards || {})
     .filter((a) => a.month === m)
     .forEach((a) => {
-      const leader = rankRows(db, m, { campus: a.campus, teamId: a.teamId })[0];
+      const leader = rankRows(db, m, { campus: a.campus, teamId: a.teamId }).find((r) => r.total > 0);
       a.validAtClose = !!leader && leader.userId === a.userId;
       if (a.validAtClose) {
         const u = userById(db, a.userId);
@@ -262,7 +241,7 @@ export function closeMonthCore(db, actorId, labelOf) {
     });
   db.snaps[m] = {
     month: m,
-    kind: "activity",
+    kind: "points",
     closedAt: nowTs(db),
     rows: buildRows(db, m),
   };

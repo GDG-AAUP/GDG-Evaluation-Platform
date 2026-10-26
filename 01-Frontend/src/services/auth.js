@@ -1,5 +1,5 @@
 import { api } from './call.js';
-import { http, setAuthToken, getAuthToken } from './http.js';
+import { http, setAuthToken, getAuthToken, getAuthProvider } from './http.js';
 import * as E from './mock/engine.js';
 
 export async function login(email, password) {
@@ -22,7 +22,8 @@ export function logout() {
 
 /** Restores the session on page load. Resolves to null when not signed in. */
 export async function currentUser() {
-  if (!getAuthToken()) return null;
+  // A Clerk provider (real backend) holds its own session; otherwise the mock token is required.
+  if (!getAuthProvider() && !getAuthToken()) return null;
   try {
     return await api((db, a) => E.me(db, a), () => http.get('/auth/me'));
   } catch (e) {

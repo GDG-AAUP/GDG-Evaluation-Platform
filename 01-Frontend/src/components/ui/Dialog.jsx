@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Icon from './Icon.jsx';
 import { Button } from './Primitives.jsx';
+import { tr } from '../../i18n/index.js';
 
 /** Modal dialog: Escape + backdrop close, focus moved inside, focus restored on close. */
 export function Dialog({ title, onClose, children, wide, sticky }) {
@@ -22,7 +23,7 @@ export function Dialog({ title, onClose, children, wide, sticky }) {
       <div className={`dlg${wide ? ' wide' : ''}`} role="dialog" aria-modal="true" aria-label={title} ref={ref}>
         <div className="dh">
           <h3>{title}</h3>
-          {!sticky && <button type="button" className="ib" aria-label="إغلاق" onClick={onClose}><Icon name="x" /></button>}
+          {!sticky && <button type="button" className="ib" aria-label={tr('إغلاق')} onClick={onClose}><Icon name="x" /></button>}
         </div>
         <div className="db">{children}</div>
       </div>
@@ -39,7 +40,7 @@ export function ConfirmDialog({ title, message, confirmLabel, danger, onConfirm,
   const [err, setErr] = useState('');
   const go = async () => {
     setBusy(true); setErr('');
-    try { await onConfirm(); onClose(); } catch (e) { setErr(e.message); setBusy(false); }
+    try { await onConfirm(); onClose(); } catch (e) { setErr(tr(e.message)); setBusy(false); }
   };
   return (
     <Dialog title={title} onClose={onClose}>
@@ -47,7 +48,7 @@ export function ConfirmDialog({ title, message, confirmLabel, danger, onConfirm,
       {err && <p className="err" role="alert">{err}</p>}
       <DialogActions>
         <Button variant={danger ? 'danger' : 'primary'} onClick={go} disabled={busy}>{confirmLabel}</Button>
-        <Button onClick={onClose}>إلغاء</Button>
+        <Button onClick={onClose}>{tr('إلغاء')}</Button>
       </DialogActions>
     </Dialog>
   );
@@ -59,28 +60,28 @@ export function ReasonDialog({ title, description, confirmLabel, danger, onConfi
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const go = async () => {
-    if (!reason.trim()) { setErr('السبب إلزامي لهذه العملية.'); return; }
+    if (!reason.trim()) { setErr(tr('السبب إلزامي لهذه العملية.')); return; }
     setBusy(true); setErr('');
-    try { await onConfirm(reason.trim()); onClose(); } catch (e) { setErr(e.message); setBusy(false); }
+    try { await onConfirm(reason.trim()); onClose(); } catch (e) { setErr(tr(e.message)); setBusy(false); }
   };
   return (
     <Dialog title={title} onClose={onClose}>
       {description && <div style={{ margin: '0 0 10px', color: 'var(--tx2)' }}>{description}</div>}
       <div className="f">
-        <label htmlFor="rsn">السبب (إلزامي)</label>
-        <textarea id="rsn" value={reason} placeholder="اكتب سببًا واضحًا للعملية" onChange={(e) => { setReason(e.target.value); setErr(''); }} />
+        <label htmlFor="rsn">{tr('السبب (إلزامي)')}</label>
+        <textarea id="rsn" value={reason} placeholder={tr('اكتب سببًا واضحًا للعملية')} onChange={(e) => { setReason(e.target.value); setErr(''); }} />
         {err && <p className="err" role="alert">{err}</p>}
       </div>
       <DialogActions>
         <Button variant={danger ? 'danger' : 'primary'} onClick={go} disabled={busy}>{confirmLabel}</Button>
-        <Button onClick={onClose}>إلغاء</Button>
+        <Button onClick={onClose}>{tr('إلغاء')}</Button>
       </DialogActions>
     </Dialog>
   );
 }
 
 /** Info dialog with a single OK button. */
-export function MessageDialog({ title, children, onClose, label = 'حسنًا' }) {
+export function MessageDialog({ title, children, onClose, label = tr('حسنًا') }) {
   return (
     <Dialog title={title} onClose={onClose}>
       <div style={{ margin: 0 }}>{children}</div>

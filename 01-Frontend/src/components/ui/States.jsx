@@ -1,6 +1,7 @@
 import Icon from './Icon.jsx';
 import { Button, Card } from './Primitives.jsx';
 import { Link } from '../../router/router.jsx';
+import { tr } from '../../i18n/index.js';
 
 export function EmptyState({ icon = 'db-off', title, text, action }) {
   return (
@@ -14,7 +15,7 @@ export function EmptyState({ icon = 'db-off', title, text, action }) {
 }
 
 export const Skeleton = () => (
-  <div aria-busy="true" aria-label="جارٍ التحميل">
+  <div aria-busy="true" aria-label={tr('جارٍ التحميل')}>
     <div className="skel" style={{ width: '40%', height: 28 }} />
     <div className="skel" style={{ width: '70%' }} />
     <div className="grid" style={{ margin: '16px 0' }}>
@@ -28,9 +29,9 @@ export const ErrorState = ({ error, onRetry }) => (
   <Card>
     <EmptyState
       icon="unplug"
-      title="تعذّر تحميل البيانات"
-      text={(error && error.message) || 'حدثت مشكلة أثناء الاتصال. جرّب مرة أخرى.'}
-      action={onRetry && <Button variant="primary" onClick={() => onRetry()}>إعادة المحاولة</Button>}
+      title={tr('تعذّر تحميل البيانات')}
+      text={tr((error && error.message) || 'حدثت مشكلة أثناء الاتصال. جرّب مرة أخرى.')}
+      action={onRetry && <Button variant="primary" onClick={() => onRetry()}>{tr('إعادة المحاولة')}</Button>}
     />
   </Card>
 );
@@ -39,9 +40,9 @@ export const Forbidden = () => (
   <Card>
     <EmptyState
       icon="lock"
-      title="ليس لديك صلاحية للوصول إلى هذه الصفحة"
-      text="تواصل مع المنظّم إذا كنت تعتقد أن هذا خطأ."
-      action={<Link to="/" className="btn btn-p">العودة إلى الرئيسية</Link>}
+      title={tr('ليس لديك صلاحية للوصول إلى هذه الصفحة')}
+      text={tr('تواصل مع المنظّم إذا كنت تعتقد أن هذا خطأ.')}
+      action={<Link to="/" className="btn btn-p">{tr('العودة إلى الرئيسية')}</Link>}
     />
   </Card>
 );
@@ -50,9 +51,9 @@ export const NotFound = () => (
   <Card>
     <EmptyState
       icon="map-off"
-      title="الصفحة غير موجودة"
-      text="تحقق من الرابط أو عد إلى الرئيسية."
-      action={<Link to="/" className="btn btn-p">العودة إلى الرئيسية</Link>}
+      title={tr('الصفحة غير موجودة')}
+      text={tr('تحقق من الرابط أو عد إلى الرئيسية.')}
+      action={<Link to="/" className="btn btn-p">{tr('العودة إلى الرئيسية')}</Link>}
     />
   </Card>
 );

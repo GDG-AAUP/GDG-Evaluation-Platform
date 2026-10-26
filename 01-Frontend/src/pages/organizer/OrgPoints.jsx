@@ -19,6 +19,7 @@ import {
   Note,
   PageHeader,
 } from "../../components/ui/Primitives.jsx";
+import { tr } from "../../i18n/index.js";
 import {
   Async,
   Skeleton,
@@ -61,42 +62,42 @@ export default function OrgPoints() {
   if (!meta) return <Skeleton />;
 
   const teamOptions = [
-    ["", "كل الفرق"],
+    ["", tr("كل الفرق")],
     ...meta.teams
       .filter((team) => team.campus === branch)
       .map((team) => [
         team.id,
-        `${CAMPUS[team.campus]} · ${team.name}`,
+        `${tr(CAMPUS[team.campus])} · ${tr(team.name)}`,
       ]),
   ];
 
   const columns = [
     {
-      title: "التاريخ",
+      title: tr("التاريخ"),
       sort: (row) => row.ts,
       render: (row) => fmtDateTime(row.ts),
     },
     {
-      title: "الشهر",
+      title: tr("الشهر"),
       sort: (row) => row.month,
       render: (row) => monthLabel(row.month),
     },
     {
-      title: "العضو",
+      title: tr("العضو"),
       sort: (row) => row.userName,
       render: (row) => row.userName,
     },
     {
-      title: "الفريق والفرع",
+      title: tr("الفريق والفرع"),
       render: (row) => (
         <>
-          {row.teamsLabel}
-          <div className="sub">{CAMPUS[row.campus]}</div>
+          {tr(row.teamsLabel)}
+          <div className="sub">{tr(CAMPUS[row.campus])}</div>
         </>
       ),
     },
     {
-      title: "نوع السجل",
+      title: tr("نوع السجل"),
       render: (row) => (
         <Badge
           tone={
@@ -107,12 +108,12 @@ export default function OrgPoints() {
                 : "n"
           }
         >
-          {TYPE_LABEL[row.type]}
+          {tr(TYPE_LABEL[row.type])}
         </Badge>
       ),
     },
     {
-      title: "الأداء / 100",
+      title: tr("الأداء / 100"),
       sort: (row) => row.performance ?? -1,
       render: (row) =>
         row.performance === null ? (
@@ -124,7 +125,7 @@ export default function OrgPoints() {
         ),
     },
     {
-      title: "نقاط النشاط",
+      title: tr("نقاط النشاط"),
       sort: (row) => row.activityPoints ?? -1,
       render: (row) =>
         row.activityPoints === null ? (
@@ -134,7 +135,7 @@ export default function OrgPoints() {
         ),
     },
     {
-      title: "النقاط القديمة",
+      title: tr("النقاط القديمة"),
       sort: (row) =>
         row.legacyPoints ?? Number.NEGATIVE_INFINITY,
       render: (row) =>
@@ -145,21 +146,21 @@ export default function OrgPoints() {
         ),
     },
     {
-      title: "النشاط / البيان",
+      title: tr("النشاط / البيان"),
       render: (row) => (
         <>
-          <strong>{row.label}</strong>
+          <strong>{tr(row.label)}</strong>
 
           {row.revision !== null && (
             <div className="sub">
-              إصدار بطاقة الأداء: {row.revision}
+              {tr("إصدار بطاقة الأداء: {n}", { n: row.revision })}
             </div>
           )}
         </>
       ),
     },
     {
-      title: "السبب / شرح النشاط",
+      title: tr("السبب / شرح النشاط"),
       render: (row) => (
         <div
           style={{
@@ -169,19 +170,19 @@ export default function OrgPoints() {
             overflowWrap: "anywhere",
           }}
         >
-          {row.reason}
+          {tr(row.reason)}
         </div>
       ),
     },
     {
-      title: "المنفذ",
+      title: tr("المنفذ"),
       render: (row) => row.actorName,
     },
     {
-      title: "الشهر مفتوح / مؤرشف",
+      title: tr("الشهر مفتوح / مؤرشف"),
       render: (row) => (
         <Badge tone={row.archived ? "n" : "g"}>
-          {row.archived ? "مؤرشف" : "مفتوح"}
+          {row.archived ? tr("مؤرشف") : tr("مفتوح")}
         </Badge>
       ),
     },
@@ -190,18 +191,18 @@ export default function OrgPoints() {
   return (
     <>
       <PageHeader
-        title="سجل التقييمات والنقاط"
-        subtitle={`سجلات ${CAMPUS[branch]} — الأداء والأنشطة والنقاط القديمة`}
-        crumb="السجل"
+        title={tr("سجل التقييمات والنقاط")}
+        subtitle={tr("سجلات {campus} — الأداء والأنشطة والنقاط القديمة", { campus: tr(CAMPUS[branch]) })}
+        crumb={tr("السجل")}
       />
 
       <FilterBar>
         <Select
-          label="الشهر"
+          label={tr("الشهر")}
           value={month}
           onChange={setMonth}
           options={[
-            ["", "كل الأشهر"],
+            ["", tr("كل الأشهر")],
             ...meta.months.map((item) => [
               item.id,
               monthLabel(item.id),
@@ -210,20 +211,20 @@ export default function OrgPoints() {
         />
 
         <Select
-          label="الفرع"
+          label={tr("الفرع")}
           value={branch}
           onChange={(campus) => {
             setTeamFilter({ campus, id: "" });
             setBranch(campus);
           }}
           options={[
-            ["jenin", "جنين"],
-            ["ramallah", "رام الله"],
+            ["jenin", tr("جنين")],
+            ["ramallah", tr("رام الله")],
           ]}
         />
 
         <Select
-          label="الفريق"
+          label={tr("الفريق")}
           value={teamId}
           onChange={(id) =>
             setTeamFilter({ campus: branch, id })
@@ -232,14 +233,14 @@ export default function OrgPoints() {
         />
 
         <Select
-          label="نوع السجل"
+          label={tr("نوع السجل")}
           value={kind}
           onChange={setKind}
           options={[
-            ["", "كل السجلات"],
-            ["performance", "تقييم الأداء"],
-            ["activity", "تقييم الأنشطة"],
-            ["legacy", "النقاط القديمة"],
+            ["", tr("كل السجلات")],
+            ["performance", tr("تقييم الأداء")],
+            ["activity", tr("تقييم الأنشطة")],
+            ["legacy", tr("النقاط القديمة")],
           ]}
         />
       </FilterBar>
@@ -259,17 +260,14 @@ export default function OrgPoints() {
                   row.teamsLabel,
                 ].join(" ")
               }
-              emptyTitle="لا توجد سجلات بهذه التصفية"
+              emptyTitle={tr("لا توجد سجلات بهذه التصفية")}
             />
           )}
         </Async>
       </Card>
 
       <Note icon="history">
-        هذا سجل للقراءة فقط. تقييم الأداء ونقاط الأنشطة
-        والنقاط القديمة تظهر في أعمدة مستقلة ولا تُجمع معًا.
-        إصدارات الأداء السابقة محفوظة للتوثيق؛ آخر إصدار
-        هو المعتمد. كل صف نشاط يمثل نقاط ذلك النشاط فقط.
+        {tr("هذا سجل للقراءة فقط. تقييم الأداء ونقاط الأنشطة والنقاط القديمة تظهر في أعمدة مستقلة ولا تُجمع معًا. إصدارات الأداء السابقة محفوظة للتوثيق؛ آخر إصدار هو المعتمد. كل صف نشاط يمثل نقاط ذلك النشاط فقط.")}
       </Note>
     </>
   );

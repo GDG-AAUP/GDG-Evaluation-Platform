@@ -1,4 +1,5 @@
 // Shared constants (used by both the UI and the mock backend).
+import { getLang } from '../i18n/index.js';
 
 export const CAMPUS = { jenin: 'جنين', ramallah: 'رام الله' };
 export const CAMPUS_KEYS = ['jenin', 'ramallah'];
@@ -33,4 +34,4 @@ export const DEFAULT_POLICIES = {
 
 /** Arabic display names of the groups (internal ids/names stay English). */
 export const TEAM_AR = { Technical: 'التقني', PR: 'العلاقات العامة', Marketing: 'التسويق', 'Social Media': 'التواصل الاجتماعي' };
-export const teamLabel = (name) => TEAM_AR[name] || name;
+export const teamLabel = (name) => (getLang() === 'en' ? name : (TEAM_AR[name] || name));

@@ -1,3 +1,4 @@
+import { tr } from "../i18n/index.js";
 import { useState } from "react";
 import { useBranch } from "../context/BranchContext.jsx";
 import { useAsync } from "../hooks/useAsync.js";
@@ -23,7 +24,7 @@ export default function Awards() {
         month: state.data.month,
         userId,
       });
-      toast.success("تم تكريم عضو الشهر وتحديث صفحة الترحيب");
+      toast.success(tr("تم تكريم عضو الشهر وتحديث صفحة الترحيب"));
       state.reload();
     } catch (e) {
       toast.error(e);
@@ -34,15 +35,15 @@ export default function Awards() {
   return (
     <>
       <PageHeader
-        title="نجوم الشهر"
-        subtitle="اختر عضو الشهر من متصدّري الفرق. يظهر التكريم تلقائيًا في صفحة الترحيب."
+        title={tr("نجوم الشهر")}
+        subtitle={tr("اختر عضو الشهر من متصدّري الفرق. يظهر التكريم تلقائيًا في صفحة الترحيب.")}
       />
       <Async state={state}>
         {(d) => (
           <>
             <div className="fb">
               <select
-                aria-label="شهر التكريم"
+                aria-label={tr("شهر التكريم")}
                 value={month || d.month}
                 onChange={(e) => setMonth(e.target.value)}
               >

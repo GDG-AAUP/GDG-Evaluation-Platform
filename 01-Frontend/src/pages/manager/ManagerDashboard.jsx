@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { tr } from "../../i18n/index.js";
 import { usePolicies } from "../../context/AppDataContext.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useAsync } from "../../hooks/useAsync.js";
@@ -101,7 +102,7 @@ export default function ManagerDashboard({ params }) {
 
   const columns = [
     {
-      title: "الاسم",
+      title: tr("الاسم"),
       sort: (row) => row.name,
       render: (row) => (
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -112,7 +113,7 @@ export default function ManagerDashboard({ params }) {
             {row.isMe && (
               <>
                 {" "}
-                <Badge tone="y">أنت</Badge>
+                <Badge tone="y">{tr("أنت")}</Badge>
               </>
             )}
 
@@ -128,34 +129,34 @@ export default function ManagerDashboard({ params }) {
       ),
     },
     {
-      title: "تقييم الأداء",
+      title: tr("تقييم الأداء"),
       sort: (row) => row.total ?? -1,
       render: (row) =>
-        row.total == null ? "لم يُقيّم" : <b>{row.total} / 100</b>,
+        row.total == null ? tr("لم يُقيّم") : <b>{row.total} / 100</b>,
     },
     {
-      title: "نقاط الأنشطة",
+      title: tr("نقاط الأنشطة"),
       sort: (row) => row.activityTotal,
       render: (row) => <b>{row.activityTotal}</b>,
     },
     {
-      title: "نسبة الأنشطة",
+      title: tr("نسبة الأنشطة"),
       sort: (row) => row.activityPercentage,
       render: (row) => (
         <b>{row.activityPercentage.toFixed(2)}%</b>
       ),
     },
     {
-      title: "عدد الأنشطة",
+      title: tr("عدد الأنشطة"),
       sort: (row) => row.activityCount,
       render: (row) => row.activityCount,
     },
     {
-      title: "الحالة",
+      title: tr("الحالة"),
       render: (row) => <UserStatusBadge status={row.status} />,
     },
     {
-      title: "إجراءات",
+      title: tr("إجراءات"),
       render: (row) => {
         const canEvaluate =
           row.id !== user.id &&
@@ -174,11 +175,11 @@ export default function ManagerDashboard({ params }) {
               variant="primary"
              onClick={() => navigate("/ratings")}
             >
-              تقييم الأداء
+              {tr("تقييم الأداء")}
             </Button>
 
             <Button small onClick={() => navigate("/activities")}>
-              تقييم الأنشطة
+              {tr("تقييم الأنشطة")}
             </Button>
 
             {managerCanEditOrMoveMembers && (
@@ -192,7 +193,7 @@ export default function ManagerDashboard({ params }) {
                   })
                 }
               >
-                تعديل
+                {tr("تعديل")}
               </Button>
             )}
           </div>
@@ -207,7 +208,7 @@ export default function ManagerDashboard({ params }) {
         {(data) => (
           <>
             <PageHeader
-              title={`فريق ${data.team.name}`}
+              title={tr("فريق {name}", { name: tr(data.team.name) })}
               subtitle={
                 <>
                   <CampusBadge campus={data.team.campus} />
@@ -227,11 +228,11 @@ export default function ManagerDashboard({ params }) {
                     variant="primary"
                     onClick={() => navigate("/ratings")}
                   >
-                    تقييم الأداء
+                    {tr("تقييم الأداء")}
                   </Button>
 
                   <Button onClick={() => navigate("/activities")}>
-                    تقييم الأنشطة
+                    {tr("تقييم الأنشطة")}
                   </Button>
                 </div>
               }
@@ -241,32 +242,32 @@ export default function ManagerDashboard({ params }) {
               <MetricCard
                 icon="users"
                 value={data.metrics.activeMembers}
-                label="أعضاء الفريق"
+                label={tr("أعضاء الفريق")}
               />
 
               <MetricCard
                 icon="star"
               value={Number(data.metrics.points ?? 0).toFixed(2)}
-label="مجموع تقييمات الأداء"
+label={tr("مجموع تقييمات الأداء")}
               />
 
               <MetricCard
                 icon="chart"
                 value={data.activityTotal}
-                label="مجموع نقاط أنشطة الأعضاء"
+                label={tr("مجموع نقاط أنشطة الأعضاء")}
                 tone="g"
               />
             </Grid>
 
             <Grid two>
               <Card>
-                <h3>ترتيب الأداء</h3>
+                <h3>{tr("ترتيب الأداء")}</h3>
 
                 {data.top.length === 0 ? (
                   <EmptyState
                     icon="trophy"
-                    title="لا توجد تقييمات بعد"
-                    text="سجّل تقييم أداء لأعضاء فريقك."
+                    title={tr("لا توجد تقييمات بعد")}
+                    text={tr("سجّل تقييم أداء لأعضاء فريقك.")}
                   />
                 ) : (
                   data.top.map((row) => (
@@ -281,13 +282,13 @@ label="مجموع تقييمات الأداء"
               </Card>
 
               <Card>
-                <h3>ترتيب الأنشطة</h3>
+                <h3>{tr("ترتيب الأنشطة")}</h3>
 
                 {data.activityTop.length === 0 ? (
                   <EmptyState
                     icon="star"
-                    title="لا توجد أنشطة بعد"
-                    text="ستظهر النتائج بعد تسجيل أنشطة لأعضاء الفريق."
+                    title={tr("لا توجد أنشطة بعد")}
+                    text={tr("ستظهر النتائج بعد تسجيل أنشطة لأعضاء الفريق.")}
                   />
                 ) : (
                   data.activityTop.map((row, index) => (
@@ -311,7 +312,7 @@ label="مجموع تقييمات الأداء"
                       <div className="nm">
                         {row.name}
                         <div className="sub">
-                          {row.activityTotal} نقطة · {row.activityCount} نشاط
+                          {tr("{points} نقطة · {count} نشاط", { points: row.activityTotal, count: row.activityCount })}
                         </div>
                       </div>
 
@@ -325,7 +326,7 @@ label="مجموع تقييمات الأداء"
             </Grid>
 
             <Card style={{ marginTop: 14 }}>
-              <h3>إرشادات سريعة</h3>
+              <h3>{tr("إرشادات سريعة")}</h3>
               <p
                 style={{
                   margin: 0,
@@ -333,22 +334,19 @@ label="مجموع تقييمات الأداء"
                   fontSize: 14,
                 }}
               >
-                تقييم الأداء من 100، ونقاط الأنشطة تتراكم خلال الشهر.
-                نسبة الأنشطة تُحسب مقارنة بإجمالي نقاط الجميع في الفرعين.
-                يمكنك تقييم الأعضاء التابعين لمجموعتك وفرعك فقط،
-                ولا يمكنك تقييم نفسك.
+                {tr("تقييم الأداء من 100، ونقاط الأنشطة تتراكم خلال الشهر. نسبة الأنشطة تُحسب مقارنة بإجمالي نقاط الجميع في الفرعين. يمكنك تقييم الأعضاء التابعين لمجموعتك وفرعك فقط، ولا يمكنك تقييم نفسك.")}
               </p>
             </Card>
 
             <Card style={{ marginTop: 14 }}>
-              <h3>أعضاء الفريق وتقييماتهم</h3>
+              <h3>{tr("أعضاء الفريق وتقييماتهم")}</h3>
 
               <DataTable
                 columns={columns}
                 rows={data.members}
                 searchText={(row) => `${row.name} ${row.email}`}
                 rowClass={(row) => (row.isMe ? "me" : "")}
-                emptyTitle="لا يوجد أعضاء بعد"
+                emptyTitle={tr("لا يوجد أعضاء بعد")}
               />
             </Card>
           </>

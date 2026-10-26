@@ -9,10 +9,11 @@ import { Dialog, DialogActions } from "../ui/Dialog.jsx";
 import { Button } from "../ui/Primitives.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
 import { CAMPUS } from "../../lib/constants.js";
+import { tr } from "../../i18n/index.js";
 function Editor({ userId, onDone, onClose }) {
   const state = useAsync(() => ratingsApi.detail(userId), [userId]);
   return state.loading ? (
-    <p>جارٍ تحميل بطاقة التقييم…</p>
+    <p>{tr("جارٍ تحميل بطاقة التقييم…")}</p>
   ) : state.error ? (
     <p role="alert">{state.error.message}</p>
   ) : (
@@ -41,7 +42,7 @@ function Form({ data, onDone, onClose }) {
         reason,
         expectedRev,
       });
-      toast.success("تم حفظ التقييم وتحديث الترتيب");
+      toast.success(tr("تم حفظ التقييم وتحديث الترتيب"));
       onDone?.();
       onClose();
     } catch (e) {
@@ -53,7 +54,7 @@ function Form({ data, onDone, onClose }) {
     <>
       <div className="rating-summary">
         <span>
-          {data.month} · {completed} / 15 بندًا
+          {tr("{month} · {done} / 15 بندًا", { month: data.month, done: completed })}
         </span>
         <strong>
           {Object.values(scores).reduce((n, v) => n + Number(v || 0), 0)}{" "}
@@ -61,8 +62,7 @@ function Form({ data, onDone, onClose }) {
         </strong>
       </div>
       <p className="hint">
-        cat1–cat5: من 0 إلى 10. بقية البنود: من 0 إلى 5. اختر قيمة لكل بند؛
-        الحدود ثابتة.
+        {tr("cat1–cat5: من 0 إلى 10. بقية البنود: من 0 إلى 5. اختر قيمة لكل بند؛ الحدود ثابتة.")}
       </p>
     <div className="scorecard-grid">
   {SCORECARD_CATEGORIES.map((category) => {
@@ -80,7 +80,7 @@ function Form({ data, onDone, onClose }) {
     return (
       <label key={category.id} className="score-field">
         <span>
-          {category.label} <small>/ {category.max}</small>
+          {tr(category.label)} <small>/ {category.max}</small>
         </span>
 
         <input
@@ -104,8 +104,8 @@ function Form({ data, onDone, onClose }) {
         {invalid && (
           <small id={errorId} className="rating-field-error">
             {empty
-              ? `هذا البند مطلوب. أدخل عددًا من 0 إلى ${category.max}.`
-              : `أدخل عددًا صحيحًا من 0 إلى ${category.max} دون كسور.`}
+              ? tr("هذا البند مطلوب. أدخل عددًا من 0 إلى {max}.", { max: category.max })
+              : tr("أدخل عددًا صحيحًا من 0 إلى {max} دون كسور.", { max: category.max })}
           </small>
         )}
       </label>
@@ -113,7 +113,7 @@ function Form({ data, onDone, onClose }) {
   })}
 </div>
       <label className="f">
-  سبب التقييم أو التعديل — مطلوب
+  {tr("سبب التقييم أو التعديل — مطلوب")}
 
   <textarea
     value={reason}
@@ -122,7 +122,7 @@ function Form({ data, onDone, onClose }) {
     required
     maxLength={2000}
     rows={3}
-    placeholder="اكتب سبب التقييم..."
+    placeholder={tr("اكتب سبب التقييم...")}
     aria-invalid={!reason.trim()}
     aria-describedby={
       !reason.trim() ? "rating-reason-error" : undefined
@@ -134,16 +134,16 @@ function Form({ data, onDone, onClose }) {
       id="rating-reason-error"
       className="rating-field-error"
     >
-      السبب مطلوب. اكتب سبب التقييم لتتمكن من الحفظ.
+      {tr("السبب مطلوب. اكتب سبب التقييم لتتمكن من الحفظ.")}
     </small>
   )}
 </label>
       {data.history.length > 0 && (
         <details>
-          <summary>سجل التعديلات ({data.history.length})</summary>
+          <summary>{tr("سجل التعديلات ({n})", { n: data.history.length })}</summary>
           {data.history.map((h) => (
             <p key={h.id}>
-              الإصدار {h.rev} · {h.total}/100 · {h.actorName}
+              {tr("الإصدار {rev}", { rev: h.rev })} · {h.total}/100 · {h.actorName}
               <br />
               {h.reason}
             </p>
@@ -161,9 +161,9 @@ function Form({ data, onDone, onClose }) {
           disabled={busy || data.locked || !validation.ok || !reason.trim()}
           onClick={save}
         >
-          حفظ التقييم
+          {tr("حفظ التقييم")}
         </Button>
-        <Button onClick={onClose}>إلغاء</Button>
+        <Button onClick={onClose}>{tr("إلغاء")}</Button>
       </DialogActions>
     </>
   );
@@ -172,16 +172,16 @@ export default function AddPointsDialog({ preUserId, onDone, onClose }) {
   const state = useAsync(() => ratingsApi.targets(), []);
   const [id, setId] = useState(preUserId || "");
   return (
-    <Dialog title="بطاقة تقييم العضو" onClose={onClose}>
+    <Dialog title={tr("بطاقة تقييم العضو")} onClose={onClose}>
       <label className="f">
-        اختر الشخص
+        {tr("اختر الشخص")}
         <select value={id} onChange={(e) => setId(e.target.value)}>
-          <option value="">اختر شخصًا للتقييم</option>
+          <option value="">{tr("اختر شخصًا للتقييم")}</option>
           {[...(state.data || [])]
   .sort((a, b) => a.name.localeCompare(b.name, "ar"))
   .map((u) => (
             <option key={u.id} value={u.id}>
-              {u.name} · {CAMPUS[u.campus]} · {u.teamsLabel}
+              {u.name} · {tr(CAMPUS[u.campus])} · {u.teamsLabel}
             </option>
           ))}
         </select>

@@ -2063,3 +2063,27 @@ textarea[aria-describedby="rating-reason-error"]:focus {
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
 }
+/* Direction toggle (LTR/RTL) */
+.dir-toggle {
+  width: auto;
+  min-width: 40px;
+  padding-inline: 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* Pages the real backend cannot serve yet (real mode only) */
+.side a.soon,
+.tabs a.soon {
+  opacity: 0.55;
+}
+.side a .soon-tag {
+  margin-inline-start: auto;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--hover);
+  color: var(--tx2);
+}

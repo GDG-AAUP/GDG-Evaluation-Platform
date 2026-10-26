@@ -81,7 +81,7 @@ function validateUserPayload(db, actor, payload, existing) {
 }
 
 export function createUser(db, actor, payload) {
-  requireRole(actor, 'organizer');
+  requireRole(actor, 'organizer', 'manager');
   const v = validateUserPayload(db, actor, payload, null);
   const pw = String(payload.password || '');
   if (pw.length < 6) throw E400('كلمة المرور المؤقتة 6 أحرف على الأقل.');
@@ -93,7 +93,7 @@ export function createUser(db, actor, payload) {
 }
 
 export function updateUser(db, actor, { id, ...payload }) {
-  requireRole(actor, 'organizer');
+  requireRole(actor, 'organizer', 'manager');
   const x = userById(db, id);
   if (!x || x.status === 'deleted') throw E404('المستخدم غير موجود.');
   if (actor.role === 'manager') {

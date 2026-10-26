@@ -1,5 +1,6 @@
 import { initials } from '../../lib/format.js';
 import Icon from './Icon.jsx';
+import { tr } from '../../i18n/index.js';
 
 export const Avatar = ({ name, photo }) => <span className="av">{photo ? <img src={photo} alt={name} /> : initials(name)}</span>;
 
@@ -23,7 +24,7 @@ export function PageHeader({ title, subtitle, actions, crumb }) {
   return (
     <div className="ph">
       <div className="t">
-        {crumb && <div className="crumb">لوحة المنظّم ‹ {crumb}</div>}
+        {crumb && <div className="crumb">{tr('لوحة المنظّم ‹ {crumb}', { crumb })}</div>}
         <h1>{title}</h1>
         {subtitle && <p>{subtitle}</p>}
       </div>

@@ -21,6 +21,17 @@ const setup = () => {
 };
 const scores = (max = true) =>
   Object.fromEntries(SCORECARD_CATEGORIES.map((c) => [c.id, max ? c.max : 0]));
+const act = (d, actor, userId, points) =>
+  R.saveActivity(d, actor, {
+    userId,
+    points,
+    label: "نشاط",
+    description: "وصف النشاط",
+  });
+// Gives a member enough activity points to lead his group.
+const lead = (d, actor, userId) => {
+  for (let i = 0; i < 6; i += 1) act(d, actor, userId, 99);
+};
 const status = (fn, n) => assert.throws(fn, (e) => e.status === n);
 test("15 immutable categories: complete integer range 0–100; reject blank, extra, negative, decimal and over limit", () => {
   assert.equal(SCORECARD_CATEGORIES.length, 15);
@@ -102,11 +113,14 @@ test("revisions replace monthly score, never accumulate, preserve history, stale
   assert.equal(scoreOf(d, "u2", d.curMonth), 0);
   assert.equal(E.orgOverview(d, o).pointsAdded, before - 100);
   assert.equal(R.detail(d, o, { userId: "u2" }).history.length, 3);
-  assert.equal(rankRows(d, d.curMonth).find((r) => r.userId === "u2").total, 0);
+  // Ranking follows points, not the scorecard: saving a rating never changes it.
+  const pointsBefore = rankRows(d, d.curMonth).find((r) => r.userId === "u2").total;
+  act(d, o, "u2", 10);
+  assert.equal(rankRows(d, d.curMonth).find((r) => r.userId === "u2").total, pointsBefore + 10);
 });
 test("four branch leaders, authorized winner, safe public payload, stale award after rank change", () => {
   const { d, o, m } = setup();
-  R.saveRating(d, o, { userId: "u2", scores: scores(), reason: "winner" });
+  lead(d, o, "u2");
   let h = R.hall(d, null, { campus: "jenin" });
   assert.equal(h.groups.length, 4);
   status(() => R.selectWinner(d, m, { campus: "jenin", userId: "u2" }), 403);
@@ -117,11 +131,9 @@ test("four branch leaders, authorized winner, safe public payload, stale award a
   assert.equal(R.hall(d, null, { campus: "ramallah" }).winner, null);
   const raw = JSON.stringify(h);
   assert.ok(!raw.includes("@gdg.ps") && !raw.includes("123456"));
-  R.saveRating(d, o, {
-    userId: "u2",
-    scores: scores(false),
-    reason: "corrected",
-  });
+  // Another member of the same group overtakes u2 -> the award is stale.
+  lead(d, o, "u3");
+  lead(d, o, "u3");
   h = R.hall(d, null, { campus: "jenin" });
   assert.equal(h.winner, null);
   assert.equal(h.stale, true);
@@ -129,7 +141,10 @@ test("four branch leaders, authorized winner, safe public payload, stale award a
 test("month archive freezes score/award, new month unrated, old ratings locked", () => {
   const { d, o } = setup();
   const month = d.curMonth;
-  const leader = R.hall(d, null, { campus: "jenin" }).groups[0].leader;
+  lead(d, o, "u2");
+  const leader = R.hall(d, null, { campus: "jenin" }).groups.find(
+    (g) => g.leader,
+  ).leader;
   R.selectWinner(d, o, { campus: "jenin", userId: leader.id });
   closeMonth(d, o);
   assert.equal(
@@ -180,25 +195,18 @@ test("v1 migration preserves original ledger, evaluations and snapshots without 
 
 test("closing month freezes live winner score and never resurrects a stale winner", () => {
   const { d, o } = setup();
-  R.saveRating(d, o, { userId: "u2", scores: scores(), reason: "first" });
+  lead(d, o, "u2");
   R.selectWinner(d, o, { campus: "jenin", userId: "u2" });
-  const revised = { ...scores(), cat15: 4 };
-  R.saveRating(d, o, { userId: "u2", scores: revised, reason: "change" });
+  act(d, o, "u2", 5); // the live score changes after the selection
+  const live = rankRows(d, d.curMonth).find((r) => r.userId === "u2").total;
   const month = d.curMonth;
   closeMonth(d, o);
-  assert.equal(R.hall(d, null, { campus: "jenin", month }).winner.total, 99);
+  assert.equal(R.hall(d, null, { campus: "jenin", month }).winner.total, live);
   const other = setup();
-  R.saveRating(other.d, other.o, {
-    userId: "u2",
-    scores: scores(),
-    reason: "first",
-  });
+  lead(other.d, other.o, "u2");
   R.selectWinner(other.d, other.o, { campus: "jenin", userId: "u2" });
-  R.saveRating(other.d, other.o, {
-    userId: "u2",
-    scores: scores(false),
-    reason: "correction",
-  });
+  lead(other.d, other.o, "u3");
+  lead(other.d, other.o, "u3"); // the same group overtakes u2 -> stale
   closeMonth(other.d, other.o);
   assert.equal(R.hall(other.d, null, { campus: "jenin", month }).winner, null);
 });

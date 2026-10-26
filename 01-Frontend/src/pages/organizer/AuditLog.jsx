@@ -18,6 +18,7 @@ import {
   PageHeader,
 } from "../../components/ui/Primitives.jsx";
 import { Async } from "../../components/ui/States.jsx";
+import { tr } from '../../i18n/index.js';
 
 const TYPES = {
   performance: {
@@ -73,17 +74,17 @@ function displayValue(value, type) {
     }
 
     if (type === "activity") {
-      return `${number} نقطة`;
+      return tr("{n} نقطة", { n: number });
     }
   }
 
-  return text;
+  return tr(text);
 }
 
 function TypeBadge({ record }) {
   const type = TYPES[recordType(record)];
 
-  return <Badge tone={type.tone}>{type.label}</Badge>;
+  return <Badge tone={type.tone}>{tr(type.label)}</Badge>;
 }
 
 export default function AuditLog() {
@@ -109,7 +110,7 @@ export default function AuditLog() {
     [filters],
   );
 
-  const options = (first, items, map = (item) => [item, item]) => [
+  const options = (first, items, map = (item) => [item, tr(item)]) => [
     ["", first],
     ...items.map(map),
   ];
@@ -128,35 +129,35 @@ export default function AuditLog() {
 
   const columns = [
     {
-      title: "الوقت",
+      title: tr("الوقت"),
       sort: (record) => record.ts,
       render: (record) => fmtDateTime(record.ts),
     },
     {
-      title: "نوع العملية",
+      title: tr("نوع العملية"),
       render: (record) => <TypeBadge record={record} />,
     },
     {
-      title: "المنفذ",
+      title: tr("المنفذ"),
       sort: (record) => record.actorName,
       render: (record) => record.actorName,
     },
     {
-      title: "الإجراء",
+      title: tr("الإجراء"),
       sort: (record) => record.action,
-      render: (record) => record.action,
+      render: (record) => tr(record.action),
     },
     {
-      title: "الشخص / الكيان",
+      title: tr("الشخص / الكيان"),
       render: (record) => (
         <>
-          <strong>{record.entity}</strong>
-          <div className="sub">{record.entityType}</div>
+          <strong>{tr(record.entity)}</strong>
+          <div className="sub">{tr(record.entityType)}</div>
         </>
       ),
     },
     {
-      title: "القيمة السابقة",
+      title: tr("القيمة السابقة"),
       render: (record) => {
         const type = recordType(record);
 
@@ -168,7 +169,7 @@ export default function AuditLog() {
       },
     },
     {
-      title: "القيمة المسجلة",
+      title: tr("القيمة المسجلة"),
       render: (record) => {
         const type = recordType(record);
 
@@ -180,18 +181,18 @@ export default function AuditLog() {
       },
     },
     {
-      title: "السبب / شرح النشاط",
+      title: tr("السبب / شرح النشاط"),
       render: (record) => (
         <div className="audit-reason-preview">
-          {record.reason || "—"}
+          {tr(record.reason || "—")}
         </div>
       ),
     },
     {
-      title: "التفاصيل",
+      title: tr("التفاصيل"),
       render: (record) => (
         <Button small onClick={() => setView(record)}>
-          عرض التفاصيل
+          {tr("عرض التفاصيل")}
         </Button>
       ),
     },
@@ -200,57 +201,57 @@ export default function AuditLog() {
   return (
     <div className="audit-rating-page">
       <PageHeader
-        title="سجل التدقيق"
-        subtitle="تتبّع تقييمات الأداء والأنشطة والعمليات الإدارية — للقراءة فقط"
-        crumb="سجل التدقيق"
+        title={tr("سجل التدقيق")}
+        subtitle={tr("تتبّع تقييمات الأداء والأنشطة والعمليات الإدارية — للقراءة فقط")}
+        crumb={tr("سجل التدقيق")}
       />
 
       <FilterBar>
         <Select
-          label="نوع العملية"
+          label={tr("نوع العملية")}
           value={category}
           onChange={setCategory}
           options={[
-            ["", "كل العمليات"],
-            ["performance", "تقييم الأداء"],
-            ["activity", "تقييم الأنشطة"],
-            ["admin", "العمليات الإدارية"],
+            ["", tr("كل العمليات")],
+            ["performance", tr("تقييم الأداء")],
+            ["activity", tr("تقييم الأنشطة")],
+            ["admin", tr("العمليات الإدارية")],
           ]}
         />
 
         <Select
-          label="المنفذ"
+          label={tr("المنفذ")}
           value={filters.actorId}
           onChange={set("actorId")}
           options={options(
-            "كل المنفذين",
+            tr("كل المنفذين"),
             state.data?.filters?.actors || [],
             (actor) => [actor.id, actor.name],
           )}
         />
 
         <Select
-          label="الإجراء"
+          label={tr("الإجراء")}
           value={filters.action}
           onChange={set("action")}
           options={options(
-            "كل الإجراءات",
+            tr("كل الإجراءات"),
             state.data?.filters?.actions || [],
           )}
         />
 
         <Select
-          label="الكيان"
+          label={tr("الكيان")}
           value={filters.entityType}
           onChange={set("entityType")}
           options={options(
-            "كل الكيانات",
+            tr("كل الكيانات"),
             state.data?.filters?.entityTypes || [],
           )}
         />
 
         <label className="f">
-          من تاريخ
+          {tr("من تاريخ")}
           <input
             type="date"
             value={filters.from}
@@ -259,7 +260,7 @@ export default function AuditLog() {
         </label>
 
         <label className="f">
-          إلى تاريخ
+          {tr("إلى تاريخ")}
           <input
             type="date"
             value={filters.to}
@@ -268,7 +269,7 @@ export default function AuditLog() {
         </label>
 
         <Button onClick={resetFilters}>
-          مسح التصفية
+          {tr("مسح التصفية")}
         </Button>
       </FilterBar>
 
@@ -313,17 +314,15 @@ export default function AuditLog() {
                       )
                     }
                   >
-                    <span>{TYPES[type].label}</span>
+                    <span>{tr(TYPES[type].label)}</span>
                     <strong>{count}</strong>
-                    <small>عملية مسجلة</small>
+                    <small>{tr("عملية مسجلة")}</small>
                   </button>
                 ))}
               </div>
 
               <p className="sub">
-                الأعداد تخص السجلات المُحمّلة ضمن فلاتر المنفذ
-                والإجراء والكيان والتاريخ. وهي أعداد عمليات،
-                وليست مجموع درجات أو نقاط.
+                {tr("الأعداد تخص السجلات المُحمّلة ضمن فلاتر المنفذ والإجراء والكيان والتاريخ. وهي أعداد عمليات، وليست مجموع درجات أو نقاط.")}
               </p>
 
               <Card>
@@ -339,7 +338,7 @@ export default function AuditLog() {
                       TYPES[recordType(record)].label,
                     ].join(" ")
                   }
-                  emptyTitle="لا توجد عمليات بهذه التصفية"
+                  emptyTitle={tr("لا توجد عمليات بهذه التصفية")}
                 />
               </Card>
             </>
@@ -349,7 +348,7 @@ export default function AuditLog() {
 
       {view && (
         <Dialog
-          title="تفاصيل العملية"
+          title={tr("تفاصيل العملية")}
           onClose={() => setView(null)}
         >
           <div style={{ marginBottom: 14 }}>
@@ -357,10 +356,10 @@ export default function AuditLog() {
           </div>
 
           <h3 style={{ margin: "0 0 8px" }}>
-            {view.action}
+            {tr(view.action)}
           </h3>
 
-          <p>{view.entity}</p>
+          <p>{tr(view.entity)}</p>
 
           <div className="sub" style={{ marginBottom: 16 }}>
             {view.actorName} · {fmtDateTime(view.ts)}
@@ -368,14 +367,14 @@ export default function AuditLog() {
 
           <div className="dif">
             <div className="a">
-              <div className="sub">القيمة السابقة</div>
+              <div className="sub">{tr("القيمة السابقة")}</div>
               <span dir="auto">
                 {displayValue(view.before, recordType(view))}
               </span>
             </div>
 
             <div className="c">
-              <div className="sub">القيمة المسجلة</div>
+              <div className="sub">{tr("القيمة المسجلة")}</div>
               <strong dir="auto">
                 {displayValue(view.after, recordType(view))}
               </strong>
@@ -385,30 +384,28 @@ export default function AuditLog() {
           <div className="audit-detail-reason">
             <strong>
               {recordType(view) === "activity"
-                ? "النشاط وشرحه"
-                : "السبب"}
+                ? tr("النشاط وشرحه")
+                : tr("السبب")}
             </strong>
 
-            <p>{view.reason || "—"}</p>
+            <p>{tr(view.reason || "—")}</p>
           </div>
 
           {recordType(view) === "activity" && (
             <p className="sub">
-              القيمة المسجلة تخص هذا النشاط فقط، وليست مجموع
-              أنشطة الشخص أو نسبة ترتيبه.
+              {tr("القيمة المسجلة تخص هذا النشاط فقط، وليست مجموع أنشطة الشخص أو نسبة ترتيبه.")}
             </p>
           )}
 
           {recordType(view) === "performance" && (
             <p className="sub">
-              هذه العملية تخص بطاقة الأداء فقط، وهي مستقلة
-              عن نقاط الأنشطة.
+              {tr("هذه العملية تخص بطاقة الأداء فقط، وهي مستقلة عن نقاط الأنشطة.")}
             </p>
           )}
 
           <DialogActions>
             <Button onClick={() => setView(null)}>
-              إغلاق
+              {tr("إغلاق")}
             </Button>
           </DialogActions>
         </Dialog>

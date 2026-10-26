@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { tr } from "../i18n/index.js";
 import { useAppData } from "../context/AppDataContext.jsx";
 import { useAsync } from "../hooks/useAsync.js";
 import { CAMPUS } from "../lib/constants.js";
@@ -35,9 +36,9 @@ function Podium({ rows }) {
 
         <div style={{ fontWeight: 500 }}>{person.name}</div>
 
-        <b dir="ltr">{Number(person.total).toFixed(2)}%</b>
+        <b dir="ltr">{Number(person.total)}</b>
 
-        <small>نسبة الأنشطة</small>
+        <small>{tr("نقطة")}</small>
       </div>
     );
   };
@@ -65,10 +66,10 @@ function Rows({ rows, q }) {
     <>
       {mine && (
         <div className="mine">
-          <span>ترتيبك العام</span>
+          <span>{tr("ترتيبك العام")}</span>
           <span>{mine.rank}</span>
 
-          <b dir="ltr">{Number(mine.total).toFixed(2)}%</b>
+          <b dir="ltr">{tr("{n} نقطة", { n: Number(mine.total) })}</b>
         </div>
       )}
 
@@ -77,15 +78,15 @@ function Rows({ rows, q }) {
       )}
 
       <h3>
-        {search ? "نتائج البحث" : "أفضل خمسة أعضاء في الفرعين"}
+        {search ? tr("نتائج البحث") : tr("أفضل خمسة أعضاء في الفرعين")}
       </h3>
 
       <Card className="lb" style={{ padding: 4 }}>
         {visible.length === 0 ? (
           <EmptyState
             icon="search-off"
-            title="لا توجد نتائج"
-            text="لا يوجد عضو بهذا الاسم."
+            title={tr("لا توجد نتائج")}
+            text={tr("لا يوجد عضو بهذا الاسم.")}
           />
         ) : (
           visible.map((person) => (
@@ -106,26 +107,26 @@ function Rows({ rows, q }) {
                 {person.isMe && (
                   <>
                     {" "}
-                    <Badge tone="b">أنت</Badge>
+                    <Badge tone="b">{tr("أنت")}</Badge>
                   </>
                 )}
 
                 {person.tie && (
                   <>
                     {" "}
-                    <Badge tone="n" title="نفس نسبة الأنشطة">
-                      تعادل
+                    <Badge tone="n" title={tr("نفس عدد النقاط")}>
+                      {tr("تعادل")}
                     </Badge>
                   </>
                 )}
 
                 <small>
-                  {CAMPUS[person.campus]} · {person.teamsLabel}
+                  {tr(CAMPUS[person.campus])} · {tr(person.teamsLabel)}
                 </small>
               </div>
 
               <span className="pt" dir="ltr">
-                {Number(person.total).toFixed(2)}%
+                {tr("{n} نقطة", { n: Number(person.total) })}
               </span>
             </div>
           ))
@@ -180,7 +181,7 @@ export default function Leaderboard() {
       <button
         type="button"
         className="ib"
-        aria-label="الشهر السابق"
+        aria-label={tr("الشهر السابق")}
         disabled={monthIndex <= 0}
         onClick={() => stepMonth(-1)}
       >
@@ -194,7 +195,7 @@ export default function Leaderboard() {
       <button
         type="button"
         className="ib"
-        aria-label="الشهر التالي"
+        aria-label={tr("الشهر التالي")}
         disabled={
           monthIndex < 0 || monthIndex >= months.length - 1
         }
@@ -208,14 +209,14 @@ export default function Leaderboard() {
   return (
     <>
       <PageHeader
-        title="الترتيب العام"
-        subtitle="أفضل الأعضاء في جميع المجموعات والفرعين حسب نسبة الأنشطة فقط"
+        title={tr("الترتيب العام")}
+        subtitle={tr("أفضل الأعضاء في جميع المجموعات والفرعين حسب مجموع النقاط")}
         actions={picker}
       />
 
       {state.data?.archived && (
         <Banner icon="archive">
-          نتائج الأنشطة للشهر المؤرشف
+          {tr("نتائج الشهر المؤرشف")}
         </Banner>
       )}
 
@@ -224,8 +225,8 @@ export default function Leaderboard() {
 
         <input
           type="search"
-          placeholder="ابحث عن عضو من أي مجموعة أو فرع"
-          aria-label="ابحث عن عضو"
+          placeholder={tr("ابحث عن عضو من أي مجموعة أو فرع")}
+          aria-label={tr("ابحث عن عضو")}
           value={search}
           onChange={(event) => setSearch(event.target.value)}
         />
@@ -237,8 +238,8 @@ export default function Leaderboard() {
         empty={
           <EmptyState
             icon="trophy"
-            title="لا توجد نقاط أنشطة لهذا الشهر"
-            text="ستظهر الأسماء عند تسجيل نقاط أنشطة للأعضاء."
+            title={tr("لا توجد نقاط لهذا الشهر")}
+            text={tr("ستظهر الأسماء عند تسجيل نقاط للأعضاء.")}
           />
         }
       >
@@ -246,10 +247,7 @@ export default function Leaderboard() {
       </Async>
 
       <Note>
-        النسبة = نقاط أنشطة العضو ÷ مجموع نقاط أنشطة الجميع
-        في الفرعين خلال الشهر × 100.
-        النسب المتساوية تحصل على نفس الترتيب، وتُعرض الأسماء
-        المتعادلة أبجديًا. تقييم الأداء لا يؤثر في الترتيب.
+        {tr("الترتيب حسب مجموع نقاط العضو خلال الشهر (النقاط المضافة ونقاط الأنشطة). من لديهم نفس عدد النقاط يحصلون على نفس الترتيب، وتُعرض أسماؤهم أبجديًا. تقييم الأداء لا يؤثر في الترتيب.")}
       </Note>
     </>
   );

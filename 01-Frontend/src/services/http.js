@@ -1,12 +1,21 @@
 import { API_URL } from '../config.js';
-import { ApiError } from './errors.js';
+import { createHttp } from './httpCore.js';
 import { notifyUnauthorized } from './session.js';
 
-// Real REST client (used when VITE_USE_MOCK=false).
-// Auth: Bearer token kept in sessionStorage. The backend should ideally use
-// httpOnly cookies instead; switch `credentials: 'include'` below if it does.
+// Real REST client (used when VITE_USE_MOCK=false). Conventions of the real backend
+// (envelope { data }, Arabic error translation, Bearer token) live in httpCore.js.
+//
+// Where does the Bearer token come from?
+//   - Real backend: a Clerk session token. Register Clerk once at start-up with
+//       setAuthProvider({ getToken: () => clerk.session?.getToken(), signOut: () => clerk.signOut() })
+//     The token is short-lived, so it is requested for EVERY call and never stored.
+//   - Mock mode: a fake token kept in sessionStorage (setAuthToken / getAuthToken).
 
 const TOKEN_KEY = 'gdg-token';
+let provider = null;
+
+export function setAuthProvider(p) { provider = p || null; }
+export function getAuthProvider() { return provider; }
 
 export function getAuthToken() {
   try { return sessionStorage.getItem(TOKEN_KEY); } catch { return null; }
@@ -19,49 +28,15 @@ export function setAuthToken(token) {
   } catch { /* storage unavailable */ }
 }
 
-function buildUrl(path, params) {
-  const url = new URL(API_URL.replace(/\/$/, '') + path, window.location.origin);
-  Object.entries(params || {}).forEach(([k, v]) => {
-    if (v !== undefined && v !== null && v !== '') url.searchParams.set(k, v);
-  });
-  return url.toString();
+/** Current Bearer token: from the auth provider (Clerk) when registered, else sessionStorage. */
+export async function getAccessToken() {
+  if (provider) return provider.getToken();
+  return getAuthToken();
 }
 
-async function request(method, path, { params, body, auth = true } = {}) {
-  const headers = { Accept: 'application/json' };
-  if (body !== undefined) headers['Content-Type'] = 'application/json';
-  const token = getAuthToken();
-  if (auth && token) headers.Authorization = `Bearer ${token}`;
-
-  let res;
-  try {
-    res = await fetch(buildUrl(path, params), {
-      method,
-      headers,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
-    });
-  } catch {
-    throw new ApiError(0, 'تعذّر الاتصال بالخادم. تحقق من الشبكة وأعد المحاولة.');
-  }
-
-  let data = null;
-  if (res.status !== 204) {
-    try { data = await res.json(); } catch { data = null; }
-  }
-
-  if (!res.ok) {
-    // Expected error body: { "message": "<Arabic sentence>", "details": {...} }
-    const message = (data && data.message) || 'حدث خطأ غير متوقع. حاول مرة أخرى.';
-    if (res.status === 401 && auth) notifyUnauthorized();
-    throw new ApiError(res.status, message, data && data.details);
-  }
-  return data;
-}
-
-export const http = {
-  get: (path, params, opts) => request('GET', path, { params, ...opts }),
-  post: (path, body, opts) => request('POST', path, { body: body ?? {}, ...opts }),
-  put: (path, body) => request('PUT', path, { body: body ?? {} }),
-  patch: (path, body) => request('PATCH', path, { body: body ?? {} }),
-  del: (path, body) => request('DELETE', path, { body }),
-};
+export const http = createHttp({
+  baseUrl: API_URL,
+  getToken: getAccessToken,
+  onUnauthorized: notifyUnauthorized,
+  origin: typeof window !== 'undefined' ? window.location.origin : undefined,
+});

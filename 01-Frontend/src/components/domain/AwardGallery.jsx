@@ -1,27 +1,29 @@
+import { tr } from "../../i18n/index.js";
 import { Avatar, Button } from "../ui/Primitives.jsx";
 export default function AwardGallery({ data, onChoose, busy }) {
+  const topScore = Math.max(1, ...data.groups.map((g) => (g.leader ? g.leader.total : 0)));
   return (
     <>
       <section className="winner-card">
         <div className="winner-copy">
-          <span className="eyebrow">نجوم المجتمع · {data.month}</span>
-          <h2>أثرٌ يستحقّ الاحتفاء.</h2>
-          <p>عضو الشهر في GDG AAUP — تكريم للشغف والعمل وروح الفريق.</p>
+          <span className="eyebrow">{tr("نجوم المجتمع · {month}", { month: data.month })}</span>
+          <h2>{tr("أثرٌ يستحقّ الاحتفاء.")}</h2>
+          <p>{tr("عضو الشهر في GDG AAUP — تكريم للشغف والعمل وروح الفريق.")}</p>
           {data.winner ? (
             <>
-              <span className="award-tag">✦ عضو الشهر</span>
+              <span className="award-tag">✦ {tr("عضو الشهر")}</span>
               <h3>{data.winner.name}</h3>
               <p>
-               {data.winner.teamName} · {Number(data.winner.total).toFixed(2)}%
+               {tr(data.winner.teamName)} · {tr("{n} نقطة", { n: Number(data.winner.total) })}
               </p>
             </>
           ) : (
             <>
-              <h3>من سيكون نجم هذا الشهر؟</h3>
+              <h3>{tr("من سيكون نجم هذا الشهر؟")}</h3>
               <p>
                 {data.stale
-                  ? "تغيّر متصدّرو الفرق. بانتظار تحديث اختيار المنظّم."
-                  : "بانتظار اختيار المنظّم من متصدّري الفرق الأربعة."}
+                  ? tr("تغيّر متصدّرو الفرق. بانتظار تحديث اختيار المنظّم.")
+                  : tr("بانتظار اختيار المنظّم من متصدّري الفرق الأربعة.")}
               </p>
             </>
           )}
@@ -67,30 +69,30 @@ export default function AwardGallery({ data, onChoose, busy }) {
               />
             </svg>
           )}
-          <span className="portrait-caption">نجم هذا الشهر</span>
+          <span className="portrait-caption">{tr("نجم هذا الشهر")}</span>
         </div>
       </section>
       <div className="section-heading">
         <div>
-          <span className="eyebrow">كل فريق، قصة نجاح</span>
-          <h2>متصدّرو المجموعات</h2>
+          <span className="eyebrow">{tr("كل فريق، قصة نجاح")}</span>
+          <h2>{tr("متصدّرو المجموعات")}</h2>
         </div>
-        <span className="hint">أعلى نسبة في تقييم الأنشطة</span>
+        <span className="hint">{tr("الأعلى نقاطًا في الفريق")}</span>
       </div>
       <div className="finalist-grid">
         {data.groups.map((g, i) => (
           <article className={"finalist tone-" + i} key={g.teamId}>
             <span className="group-number">0{i + 1}</span>
-            <span className="eyebrow">{g.name}</span>
+            <span className="eyebrow">{tr(g.name)}</span>
             {g.leader ? (
               <>
                 <Avatar name={g.leader.name} photo={g.leader.photo} />
                 <h3>{g.leader.name}</h3>
                 <div className="score-track">
-                  <span style={{ width: g.leader.total + "%" }} />
+                  <span style={{ width: Math.max(0, Math.min(100, (g.leader.total / topScore) * 100)) + "%" }} />
                 </div>
                 <p>
-                  <strong>{Number(g.leader.total).toFixed(2)}%</strong>
+                  <strong>{tr("{n} نقطة", { n: Number(g.leader.total) })}</strong>
                 </p>
                 {onChoose && (
                   <Button
@@ -99,13 +101,13 @@ export default function AwardGallery({ data, onChoose, busy }) {
                     onClick={() => onChoose(g.leader.id)}
                   >
                     {data.winner?.userId === g.leader.id
-                      ? "✓ عضو الشهر"
-                      : "اختيار عضو الشهر"}
+                      ? "✓ " + tr("عضو الشهر")
+                      : tr("اختيار عضو الشهر")}
                   </Button>
                 )}
               </>
             ) : (
-              <p>لم يُسجّل أنشطة لهذا الفريق بعد.</p>
+              <p>{tr("لم يُسجّل أنشطة لهذا الفريق بعد.")}</p>
             )}
           </article>
         ))}

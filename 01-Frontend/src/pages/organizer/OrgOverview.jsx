@@ -4,6 +4,7 @@ import { useBranch } from "../../context/BranchContext.jsx";
 import { useToast } from "../../context/ToastContext.jsx";
 import { useAsync } from "../../hooks/useAsync.js";
 import { CAMPUS } from "../../lib/constants.js";
+import { tr } from "../../i18n/index.js";
 import {
   fmtDateTime,
   monthLabel,
@@ -58,7 +59,7 @@ function PieChart({ items, unit, emptyText }) {
     return (
       <div className="gdg-pie-empty">
         <div className="gdg-pie-empty-circle" />
-        <p>{emptyText || "لا توجد بيانات لعرضها."}</p>
+        <p>{emptyText || tr("لا توجد بيانات لعرضها.")}</p>
       </div>
     );
   }
@@ -211,7 +212,7 @@ function PerformanceBars({ teams }) {
           <div key={team.id}>
             <div className="gdg-bar-heading">
               <span>
-                {CAMPUS[team.campus]} · {team.name}
+                {tr(CAMPUS[team.campus])} · {team.name}
               </span>
               <b dir="ltr">
                 {hasRating ? `${value.toFixed(2)} / 100` : "—"}
@@ -223,8 +224,8 @@ function PerformanceBars({ teams }) {
               role="img"
               aria-label={
                 hasRating
-                  ? `${team.name}: ${value.toFixed(2)} من 100`
-                  : `${team.name}: لم يسجل تقييم أداء`
+                  ? tr("{name}: {value} من 100", { name: team.name, value: value.toFixed(2) })
+                  : tr("{name}: لم يسجل تقييم أداء", { name: team.name })
               }
             >
               <span
@@ -251,7 +252,7 @@ function ActivityBars({ people, total }) {
     .slice(0, 5);
 
   if (!rows.length) {
-    return <p className="sub">لا توجد نقاط أنشطة بعد.</p>;
+    return <p className="sub">{tr("لا توجد نقاط أنشطة بعد.")}</p>;
   }
 
   return (
@@ -282,7 +283,7 @@ function ActivityBars({ people, total }) {
             </div>
 
             <small className="sub">
-              {person.activityPoints} نقطة · {CAMPUS[person.campus]}
+              {tr("{points} نقطة · {campus}", { points: person.activityPoints, campus: tr(CAMPUS[person.campus]) })}
             </small>
           </div>
         );
@@ -327,18 +328,18 @@ export default function OrgOverview() {
   async function closeMonth() {
     await archiveApi.closeMonth();
     await reloadMeta();
-    toast.success("تم إغلاق الشهر وحفظ اللقطة");
+    toast.success(tr("تم إغلاق الشهر وحفظ اللقطة"));
     done();
   }
 
   return (
     <div className="org-rating-overview">
       <PageHeader
-        title="نظرة عامة"
+        title={tr("نظرة عامة")}
         subtitle={
           campus === "all"
-            ? "إحصائيات الفرعين معًا"
-            : `إحصائيات فرع ${CAMPUS[campus]}`
+            ? tr("إحصائيات الفرعين معًا")
+            : tr("إحصائيات فرع {campus}", { campus: tr(CAMPUS[campus]) })
         }
         actions={
           <div className="overview-actions">
@@ -346,18 +347,18 @@ export default function OrgOverview() {
               icon="user-plus"
               onClick={() => setDlg("member")}
             >
-              إضافة عضو
+              {tr("إضافة عضو")}
             </Button>
 
             <Button
               icon="star"
               onClick={() => setDlg("points")}
             >
-              تقييم الأداء
+              {tr("تقييم الأداء")}
             </Button>
 
             <Button onClick={() => navigate("/activities")}>
-              تقييم الأنشطة
+              {tr("تقييم الأنشطة")}
             </Button>
 
             <Button
@@ -365,17 +366,17 @@ export default function OrgOverview() {
               icon="archive"
               onClick={() => setDlg("close")}
             >
-              إغلاق الشهر
+              {tr("إغلاق الشهر")}
             </Button>
           </div>
         }
       />
 
-      <div className="overview-scope" aria-label="نطاق الإحصائيات">
+      <div className="overview-scope" aria-label={tr("نطاق الإحصائيات")}>
         {[
-          ["jenin", "جنين"],
-          ["ramallah", "رام الله"],
-          ["all", "الفريقين معًا"],
+          ["jenin", tr("جنين")],
+          ["ramallah", tr("رام الله")],
+          ["all", tr("الفريقين معًا")],
         ].map(([value, label]) => (
           <button
             key={value}
@@ -392,15 +393,15 @@ export default function OrgOverview() {
         {(data) => {
           const scopeLabel =
             data.campus === "all"
-              ? "الفرعين معًا"
-              : `فرع ${CAMPUS[data.campus]}`;
+              ? tr("الفرعين معًا")
+              : tr("فرع {campus}", { campus: tr(CAMPUS[data.campus]) });
 
           const people = data.people;
 
           const performanceDistribution = [
             {
               id: "excellent",
-              label: "أداء 90–100",
+              label: tr("أداء 90–100"),
               color: COLORS.blue,
               value: people.filter(
                 (person) =>
@@ -410,7 +411,7 @@ export default function OrgOverview() {
             },
             {
               id: "good",
-              label: "أداء 70–89",
+              label: tr("أداء 70–89"),
               color: COLORS.teal,
               value: people.filter(
                 (person) =>
@@ -421,7 +422,7 @@ export default function OrgOverview() {
             },
             {
               id: "developing",
-              label: "أداء 50–69",
+              label: tr("أداء 50–69"),
               color: COLORS.amber,
               value: people.filter(
                 (person) =>
@@ -432,7 +433,7 @@ export default function OrgOverview() {
             },
             {
               id: "below50",
-              label: "أداء أقل من 50",
+              label: tr("أداء أقل من 50"),
               color: COLORS.rose,
               value: people.filter(
                 (person) =>
@@ -442,7 +443,7 @@ export default function OrgOverview() {
             },
             {
               id: "unrated",
-              label: "لم يُقيّم بعد",
+              label: tr("لم يُقيّم بعد"),
               color: COLORS.gray,
               value: people.filter(
                 (person) => person.performance === null,
@@ -477,7 +478,7 @@ export default function OrgOverview() {
           if (remainingPoints > 0) {
             contributionItems.push({
               id: "others",
-              label: "بقية الأعضاء",
+              label: tr("بقية الأعضاء"),
               value: remainingPoints,
               color: COLORS.gray,
             });
@@ -486,7 +487,7 @@ export default function OrgOverview() {
           const branchActivities = [
             {
               id: "jenin",
-              label: "جنين",
+              label: tr("جنين"),
               color: COLORS.blue,
               value: people
                 .filter((person) => person.campus === "jenin")
@@ -497,7 +498,7 @@ export default function OrgOverview() {
             },
             {
               id: "ramallah",
-              label: "رام الله",
+              label: tr("رام الله"),
               color: COLORS.teal,
               value: people
                 .filter((person) => person.campus === "ramallah")
@@ -518,13 +519,13 @@ export default function OrgOverview() {
                 <MetricCard
                   icon="users"
                   value={data.members.total}
-                  label="الأعضاء الفعّالون"
+                  label={tr("الأعضاء الفعّالون")}
                 />
 
                 <MetricCard
                   icon="manager"
                   value={data.managers}
-                  label="المديرون الفعّالون"
+                  label={tr("المديرون الفعّالون")}
                   tone="y"
                 />
               </Grid>
@@ -534,8 +535,8 @@ export default function OrgOverview() {
                   <span className="overview-section-icon">✦</span>
 
                   <div>
-                    <h2>تقييم الأداء</h2>
-                    <p>بطاقة مستقلة من 100 لكل عضو</p>
+                    <h2>{tr("تقييم الأداء")}</h2>
+                    <p>{tr("بطاقة مستقلة من 100 لكل عضو")}</p>
                   </div>
                 </div>
 
@@ -543,49 +544,44 @@ export default function OrgOverview() {
                   <MetricCard
                     icon="star"
                     value={`${data.performance.average.toFixed(2)} / 100`}
-                    label="متوسط بطاقات الأداء المسجلة"
+                    label={tr("متوسط بطاقات الأداء المسجلة")}
                   />
 
                   <MetricCard
                     icon="users"
                     value={`${data.performance.ratedCount} / ${data.members.total}`}
-                    label="الأعضاء الذين تم تقييم أدائهم"
+                    label={tr("الأعضاء الذين تم تقييم أدائهم")}
                   />
                 </Grid>
 
                 <div className="gdg-chart-grid">
                   <Card>
-                    <h3>توزيع مستويات الأداء</h3>
+                    <h3>{tr("توزيع مستويات الأداء")}</h3>
                     <p className="sub">
-                      كل شريحة توضح نسبة الأعضاء في نطاق الأداء
-                      المكتوب بجانب لونها.
+                      {tr("كل شريحة توضح نسبة الأعضاء في نطاق الأداء المكتوب بجانب لونها.")}
                     </p>
 
                     <PieChart
                       items={performanceDistribution}
-                      unit="عضو"
-                      emptyText="أضف أعضاء لعرض توزيع الأداء."
+                      unit={tr("عضو")}
+                      emptyText={tr("أضف أعضاء لعرض توزيع الأداء.")}
                     />
 
                     <div className="gdg-chart-formula">
-                      نسبة الشريحة = عدد أعضائها ÷ عدد أعضاء{" "}
-                      {scopeLabel} × 100.
-                      الأعضاء غير المقيّمين يظهرون بلون مستقل.
+                      {tr("نسبة الشريحة = عدد أعضائها ÷ عدد أعضاء {scope} × 100. الأعضاء غير المقيّمين يظهرون بلون مستقل.", { scope: scopeLabel })}
                     </div>
                   </Card>
 
                   <Card>
-                    <h3>متوسط الأداء لكل مجموعة</h3>
+                    <h3>{tr("متوسط الأداء لكل مجموعة")}</h3>
                     <p className="sub">
-                      مجموع درجات الأداء المسجلة ÷ عدد الأعضاء
-                      المقيّمين في المجموعة.
+                      {tr("مجموع درجات الأداء المسجلة ÷ عدد الأعضاء المقيّمين في المجموعة.")}
                     </p>
 
                     <PerformanceBars teams={data.perTeam} />
 
                     <div className="gdg-chart-formula">
-                      طول الشريط يمثل المتوسط من 100.
-                      الرمز — يعني عدم وجود بطاقات أداء مسجلة.
+                      {tr("طول الشريط يمثل المتوسط من 100. الرمز — يعني عدم وجود بطاقات أداء مسجلة.")}
                     </div>
                   </Card>
                 </div>
@@ -596,8 +592,8 @@ export default function OrgOverview() {
                   <span className="overview-section-icon">⚡</span>
 
                   <div>
-                    <h2>تقييم الأنشطة</h2>
-                    <p>نقاط الأنشطة فقط، مستقلة عن الأداء</p>
+                    <h2>{tr("تقييم الأنشطة")}</h2>
+                    <p>{tr("نقاط الأنشطة فقط، مستقلة عن الأداء")}</p>
                   </div>
                 </div>
 
@@ -605,49 +601,47 @@ export default function OrgOverview() {
                   <MetricCard
                     icon="star"
                     value={data.activities.points}
-                    label="نقاط أنشطة الأعضاء المحددين"
+                    label={tr("نقاط أنشطة الأعضاء المحددين")}
                     tone="g"
                   />
 
                   <MetricCard
                     icon="chart"
                     value={data.activities.count}
-                    label="الأنشطة المسجلة للأعضاء"
+                    label={tr("الأنشطة المسجلة للأعضاء")}
                     tone="g"
                   />
 
                   <MetricCard
                     icon="users"
                     value={data.activities.participatingMembers}
-                    label="أعضاء لديهم أنشطة مسجلة"
+                    label={tr("أعضاء لديهم أنشطة مسجلة")}
                     tone="g"
                   />
                 </Grid>
 
                 <div className="gdg-chart-grid">
                   <Card>
-                    <h3>حصة الأعضاء من نقاط الأنشطة</h3>
+                    <h3>{tr("حصة الأعضاء من نقاط الأنشطة")}</h3>
                     <p className="sub">
-                      أعلى خمسة أعضاء بالنقاط، وبقية الأعضاء
-                      في شريحة واحدة.
+                      {tr("أعلى خمسة أعضاء بالنقاط، وبقية الأعضاء في شريحة واحدة.")}
                     </p>
 
                     <PieChart
                       items={contributionItems}
-                      unit="نقطة"
-                      emptyText="سجّل نقاط أنشطة لعرض مساهمات الأعضاء."
+                      unit={tr("نقطة")}
+                      emptyText={tr("سجّل نقاط أنشطة لعرض مساهمات الأعضاء.")}
                     />
 
                     <div className="gdg-chart-formula">
-                      حصة العضو هنا = نقاط أنشطته ÷ مجموع نقاط
-                      أنشطة أعضاء {scopeLabel} × 100.
+                      {tr("حصة العضو هنا = نقاط أنشطته ÷ مجموع نقاط أنشطة أعضاء {scope} × 100.", { scope: scopeLabel })}
                     </div>
                   </Card>
 
                   <Card>
-                    <h3>أعلى خمس مساهمات بالأنشطة</h3>
+                    <h3>{tr("أعلى خمس مساهمات بالأنشطة")}</h3>
                     <p className="sub">
-                      الحصة من نقاط الأنشطة داخل النطاق المحدد.
+                      {tr("الحصة من نقاط الأنشطة داخل النطاق المحدد.")}
                     </p>
 
                     <ActivityBars
@@ -656,57 +650,53 @@ export default function OrgOverview() {
                     />
 
                     <div className="gdg-chart-formula">
-                      هذه النسب خاصة بتحليل النطاق المحدد.
-                      النسبة الرسمية في الترتيب العام تعتمد
-                      على مجموع نقاط الجميع في الفرعين.
+                      {tr("هذه النسب خاصة بتحليل النطاق المحدد. النسبة الرسمية في الترتيب العام تعتمد على مجموع نقاط الجميع في الفرعين.")}
                     </div>
                   </Card>
                 </div>
 
                 {data.campus === "all" && (
                   <Card style={{ marginTop: 18 }}>
-                    <h3>توزيع نقاط الأنشطة بين الفرعين</h3>
+                    <h3>{tr("توزيع نقاط الأنشطة بين الفرعين")}</h3>
                     <p className="sub">
-                      مقارنة حصة أعضاء جنين بحصة أعضاء رام الله.
+                      {tr("مقارنة حصة أعضاء جنين بحصة أعضاء رام الله.")}
                     </p>
 
                     <PieChart
                       items={branchActivities}
-                      unit="نقطة"
-                      emptyText="لا توجد نقاط أنشطة للأعضاء بعد."
+                      unit={tr("نقطة")}
+                      emptyText={tr("لا توجد نقاط أنشطة للأعضاء بعد.")}
                     />
 
                     <div className="gdg-chart-formula">
-                      حصة الفرع = نقاط أنشطة أعضائه ÷ مجموع نقاط
-                      أنشطة أعضاء الفرعين × 100.
+                      {tr("حصة الفرع = نقاط أنشطة أعضائه ÷ مجموع نقاط أنشطة أعضاء الفرعين × 100.")}
                     </div>
                   </Card>
                 )}
               </section>
 
               <Card>
-                <h3>أعضاء {scopeLabel}</h3>
+                <h3>{tr("أعضاء {scope}", { scope: scopeLabel })}</h3>
                 <p className="sub">
-                  نسبة الأنشطة الرسمية أدناه تستخدم مجموع
-                  نقاط الجميع في الفرعين، مثل صفحة الترتيب.
+                  {tr("نسبة الأنشطة الرسمية أدناه تستخدم مجموع نقاط الجميع في الفرعين، مثل صفحة الترتيب.")}
                 </p>
 
                 {!people.length ? (
                   <EmptyState
                     icon="users"
-                    title="لا يوجد أعضاء فعّالون"
-                    text="سيظهر الأعضاء بعد إضافتهم."
+                    title={tr("لا يوجد أعضاء فعّالون")}
+                    text={tr("سيظهر الأعضاء بعد إضافتهم.")}
                   />
                 ) : (
                   <div className="overview-table-wrap">
                     <table className="overview-members-table">
                       <thead>
                         <tr>
-                          <th>الاسم</th>
-                          <th>الفرع</th>
-                          <th>الأداء / 100</th>
-                          <th>نقاط الأنشطة</th>
-                          <th>نسبة الأنشطة الرسمية</th>
+                          <th>{tr("الاسم")}</th>
+                          <th>{tr("الفرع")}</th>
+                          <th>{tr("الأداء / 100")}</th>
+                          <th>{tr("نقاط الأنشطة")}</th>
+                          <th>{tr("نسبة الأنشطة الرسمية")}</th>
                         </tr>
                       </thead>
 
@@ -714,10 +704,10 @@ export default function OrgOverview() {
                         {people.map((person) => (
                           <tr key={person.id}>
                             <td>{person.name}</td>
-                            <td>{CAMPUS[person.campus]}</td>
+                            <td>{tr(CAMPUS[person.campus])}</td>
                             <td>
                               {person.performance === null
-                                ? "لم يُقيّم"
+                                ? tr("لم يُقيّم")
                                 : person.performance.toFixed(2)}
                             </td>
                             <td>{person.activityPoints}</td>
@@ -735,19 +725,19 @@ export default function OrgOverview() {
               </Card>
 
               <Card>
-                <h3>آخر العمليات الإدارية — المنصة كاملة</h3>
+                <h3>{tr("آخر العمليات الإدارية — المنصة كاملة")}</h3>
 
                 {data.recent.length === 0 ? (
                   <EmptyState
                     icon="history"
-                    title="لا توجد عمليات بعد"
-                    text="ستظهر العمليات الإدارية هنا."
+                    title={tr("لا توجد عمليات بعد")}
+                    text={tr("ستظهر العمليات الإدارية هنا.")}
                   />
                 ) : (
                   data.recent.map((entry) => (
                     <div className="le" key={entry.id}>
                       <div style={{ flex: 1 }}>
-                        <b>{entry.action}</b> · {entry.entity}
+                        <b>{tr(entry.action)}</b> · {tr(entry.entity)}
 
                         <div className="sub">
                           {entry.actorName} · {fmtDateTime(entry.ts)}
@@ -758,23 +748,23 @@ export default function OrgOverview() {
                 )}
 
                 <Link to="/organizer/audit">
-                  عرض سجل التدقيق كاملًا
+                  {tr("عرض سجل التدقيق كاملًا")}
                 </Link>
               </Card>
 
               {dlg === "close" && (
                 <ConfirmDialog
-                  title={`إغلاق شهر ${monthLabel(data.month)}`}
+                  title={tr("إغلاق شهر {month}", { month: monthLabel(data.month) })}
                   danger
-                  confirmLabel="إغلاق الشهر"
+                  confirmLabel={tr("إغلاق الشهر")}
                   onClose={close}
                   onConfirm={closeMonth}
                   message={
                     <>
-                      سيُغلق الشهر للفرعين معًا وتُحفظ لقطة
-                      ترتيب الأنشطة دون حذف السجلات. سيبدأ شهر{" "}
+                      {tr("سيُغلق الشهر للفرعين معًا وتُحفظ لقطة ترتيب الأنشطة دون حذف السجلات.")}{" "}
+                      {tr("سيبدأ شهر")}{" "}
                       <b>{monthLabel(nextMonth(data.month))}</b>{" "}
-                      بسجلات شهرية جديدة.
+                      {tr("بسجلات شهرية جديدة.")}
                     </>
                   }
                 />

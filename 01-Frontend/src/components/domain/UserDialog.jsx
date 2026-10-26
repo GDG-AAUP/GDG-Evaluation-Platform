@@ -7,6 +7,7 @@ import { usersApi } from "../../services/index.js";
 import { Dialog, DialogActions } from "../ui/Dialog.jsx";
 import { Field, Select } from "../ui/Form.jsx";
 import { Button } from "../ui/Primitives.jsx";
+import { tr } from "../../i18n/index.js";
 
 const genPassword = () => {
   const ch = "abcdefghjkmnpqrstuvwxyz23456789";
@@ -78,7 +79,7 @@ export default function UserDialog({
       };
       if (x) await usersApi.updateUser(x.id, body);
       else await usersApi.createUser({ ...body, password: f.password });
-      toast.success(x ? "تم حفظ التعديلات" : "تمت الإضافة");
+      toast.success(x ? tr("تم حفظ التعديلات") : tr("تمت الإضافة"));
       onDone && onDone();
       onClose();
     } catch (e) {
@@ -88,10 +89,12 @@ export default function UserDialog({
   };
 
   const title = x
-    ? `تعديل بيانات ${f.role === "manager" ? "المدير" : "العضو"}`
+    ? f.role === "manager"
+      ? tr("تعديل بيانات المدير")
+      : tr("تعديل بيانات العضو")
     : f.role === "manager"
-      ? "إضافة مدير"
-      : "إضافة عضو";
+      ? tr("إضافة مدير")
+      : tr("إضافة عضو");
 
   return (
     <Dialog title={title} onClose={onClose}>
@@ -100,18 +103,18 @@ export default function UserDialog({
         onChange={(v) => set("photo", v)}
         onError={setErr}
       />
-      <Field label="الاسم الكامل">
+      <Field label={tr("الاسم الكامل")}>
         {(id) => (
           <input
             id={id}
             type="text"
             value={f.name}
-            placeholder="مثال: سارة أحمد"
+            placeholder={tr("مثال: سارة أحمد")}
             onChange={(e) => set("name", e.target.value)}
           />
         )}
       </Field>
-      <Field label="البريد الإلكتروني">
+      <Field label={tr("البريد الإلكتروني")}>
         {(id) => (
           <input
             id={id}
@@ -125,35 +128,35 @@ export default function UserDialog({
         )}
       </Field>
       <div className="row2">
-        <Field label="الحرم">
+        <Field label={tr("الحرم")}>
           {(id) => (
             <Select
               id={id}
               value={f.campus}
               disabled={!!fixedTeam}
               onChange={changeCampus}
-              options={Object.entries(CAMPUS)}
+              options={Object.entries(CAMPUS).map(([v, l]) => [v, tr(l)])}
             />
           )}
         </Field>
-        <Field label="الدور">
+        <Field label={tr("الدور")}>
           {(id) => (
             <Select
               id={id}
               value={f.role}
               disabled={roleLocked}
               onChange={changeRole}
-              options={Object.entries(ROLE_LABEL).map(([v, l]) => [v, l])}
+              options={Object.entries(ROLE_LABEL).map(([v, l]) => [v, tr(l)])}
             />
           )}
         </Field>
       </div>
       <div className="f">
-        <label>الفريق</label>
+        <label>{tr("الفريق")}</label>
         {f.role === "organizer" ? (
-          <p className="hint">المنظّم لا يتبع فريقًا محددًا.</p>
+          <p className="hint">{tr("المنظّم لا يتبع فريقًا محددًا.")}</p>
         ) : fixedTeam ? (
-          <select disabled aria-label="الفريق">
+          <select disabled aria-label={tr("الفريق")}>
             <option>
               {(campusTeams.find((t) => t.id === fixedTeam) || {}).name}
             </option>
@@ -182,18 +185,18 @@ export default function UserDialog({
           </div>
         ) : (
           <Select
-            label="الفريق"
+            label={tr("الفريق")}
             value={f.teams[0] || ""}
             onChange={(v) => set("teams", v ? [v] : [])}
             options={[
-              ["", "اختر الفريق"],
+              ["", tr("اختر الفريق")],
               ...campusTeams.map((t) => [t.id, t.name]),
             ]}
           />
         )}
       </div>
       {!x && (
-        <Field label="كلمة مرور مؤقتة">
+        <Field label={tr("كلمة مرور مؤقتة")}>
           {(id) => (
             <div style={{ display: "flex", gap: 8 }}>
               <input
@@ -201,19 +204,19 @@ export default function UserDialog({
                 type="text"
                 dir="ltr"
                 style={{ textAlign: "start" }}
-                placeholder="6 أحرف على الأقل"
+                placeholder={tr("6 أحرف على الأقل")}
                 value={f.password}
                 onChange={(e) => set("password", e.target.value)}
               />
               <Button onClick={() => set("password", genPassword())}>
-                توليد
+                {tr("توليد")}
               </Button>
             </div>
           )}
         </Field>
       )}
       {fixedTeam && (
-        <p className="hint">يُضاف العضو إلى فريقك فقط بدور Member.</p>
+        <p className="hint">{tr("يُضاف العضو إلى فريقك فقط بدور Member.")}</p>
       )}
       {err && (
         <p className="err" role="alert">
@@ -222,9 +225,9 @@ export default function UserDialog({
       )}
       <DialogActions>
         <Button variant="primary" onClick={save} disabled={busy}>
-          {x ? "حفظ" : "إضافة"}
+          {x ? tr("حفظ") : tr("إضافة")}
         </Button>
-        <Button onClick={onClose}>إلغاء</Button>
+        <Button onClick={onClose}>{tr("إلغاء")}</Button>
       </DialogActions>
     </Dialog>
   );
@@ -239,7 +242,7 @@ function PhotoInput({ value, onChange, onError }) {
       !["image/jpeg", "image/png", "image/webp"].includes(file.type) ||
       file.size > 5000000
     ) {
-      onError("اختر صورة JPG أو PNG أو WebP أصغر من 5 ميغابايت.");
+      onError(tr("اختر صورة JPG أو PNG أو WebP أصغر من 5 ميغابايت."));
       return;
     }
     setWorking(true);
@@ -265,10 +268,10 @@ function PhotoInput({ value, onChange, onError }) {
         320,
       );
       const data = canvas.toDataURL("image/jpeg", 0.75);
-      if (data.length > 180000) throw Error("الصورة كبيرة؛ اختر صورة أبسط.");
+      if (data.length > 180000) throw Error(tr("الصورة كبيرة؛ اختر صورة أبسط."));
       onChange(data);
     } catch (e) {
-      onError(e.message || "تعذّر قراءة الصورة");
+      onError(e.message || tr("تعذّر قراءة الصورة"));
     } finally {
       URL.revokeObjectURL(url);
       setWorking(false);
@@ -277,7 +280,7 @@ function PhotoInput({ value, onChange, onError }) {
   return (
     <div className="f">
       <label>
-        صورة العضو
+        {tr("صورة العضو")}
         <input
           type="file"
           accept="image/jpeg,image/png,image/webp"
@@ -287,11 +290,11 @@ function PhotoInput({ value, onChange, onError }) {
       </label>
       {value && (
         <>
-          <img className="photo-preview" src={value} alt="معاينة صورة العضو" />
-          <Button onClick={() => onChange(null)}>إزالة الصورة</Button>
+          <img className="photo-preview" src={value} alt={tr("معاينة صورة العضو")} />
+          <Button onClick={() => onChange(null)}>{tr("إزالة الصورة")}</Button>
         </>
       )}
-      {working && <p>جارٍ تجهيز الصورة…</p>}
+      {working && <p>{tr("جارٍ تجهيز الصورة…")}</p>}
     </div>
   );
 }

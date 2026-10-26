@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { createSeed } from './seed.js';
 import * as E from './engine.js';
 import * as A from './engineAdmin.js';
+import { saveActivity } from './ratings.js';
 import { rankRows, totalOf, scoreOf } from './helpers.js';
 
 const setup = () => {
@@ -10,6 +11,8 @@ const setup = () => {
   const u = (id) => db.users.find((x) => x.id === id);
   return { db, u, member: u('u1'), mgr: u('m1'), org: u('o1') };
 };
+const act = (db, actor, userId, points, label = 'نشاط') =>
+  saveActivity(db, actor, { userId, points, label, description: 'وصف النشاط' });
 const throwsStatus = (fn, status) => assert.throws(fn, (e) => e.status === status, `expected status ${status}`);
 
 test('login: success, wrong password, disabled account', () => {
@@ -50,17 +53,20 @@ test('reversal: linked, append-only, once only, not for reversals', () => {
   throwsStatus(() => E.reversePoints(db, org, { entryId: db.entries[db.entries.length - 1].id, reason: 'x' }), 409);
 });
 
-test('ranking: ties broken by who reached the total first; archived is frozen', () => {
+test('ranking: equal points get the same rank; archived is frozen', () => {
   const { db, org } = setup();
-  const ca=db.scorecards.find(r=>r.targetId==='u2');
-  const cb=db.scorecards.find(r=>r.targetId==='u3');
-  Object.assign(cb,{scores:{...ca.scores},total:ca.total,core:ca.core,ts:ca.ts+1000});
+  // Make u2 and u3 end with exactly the same number of points, whatever the seed holds.
+  const t2 = rankRows(db, db.curMonth).find((r) => r.userId === 'u2').total;
+  const t3 = rankRows(db, db.curMonth).find((r) => r.userId === 'u3').total;
+  if (t2 > t3) act(db, org, 'u3', t2 - t3);
+  if (t3 > t2) act(db, org, 'u2', t3 - t2);
+  act(db, org, 'u1', 90);
   const rows = rankRows(db, db.curMonth, { campus: 'jenin', teamId: 'jenin-technical' });
   const a = rows.find((r) => r.userId === 'u2');
   const b = rows.find((r) => r.userId === 'u3');
   assert.equal(a.total, b.total);
   assert.ok(a.tie && b.tie);
-  assert.ok(a.rank < b.rank, 'u2 reached the total first');
+  assert.equal(a.rank, b.rank, 'equal points share the same rank');
   const snapBefore = JSON.stringify(db.snaps['2026-09']);
   A.addCorrection(db, org, { month: '2026-09', userId: 'u2', value: 5, reason: 'x' });
   assert.equal(JSON.stringify(db.snaps['2026-09']), snapBefore, 'late correction never edits the snapshot');
@@ -70,11 +76,14 @@ test('ranking: ties broken by who reached the total first; archived is frozen', 
 test('close month: snapshot + next month from zero', () => {
   const { db, org } = setup();
   const prev = db.curMonth;
-  const t = scoreOf(db, 'u2', prev);
+  act(db, org, 'u2', 10);
+  act(db, org, 'u3', 30);
+  const t = rankRows(db, prev).find((r) => r.userId === 'u2').total;
   A.closeMonth(db, org);
   assert.equal(db.curMonth, '2026-11');
   assert.equal(db.snaps[prev].rows.find((r) => r.userId === 'u2').total, t);
   assert.equal(totalOf(db, 'u2', db.curMonth), 0);
+  assert.ok(rankRows(db, db.curMonth).every((r) => r.total === 0), 'new month starts from zero points');
   throwsStatus(() => A.closeMonth(db, db.users.find((x) => x.id === 'm1')), 403);
 });
 

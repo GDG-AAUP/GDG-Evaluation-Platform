@@ -1,13 +1,14 @@
 import { useMemo, useState } from 'react';
 import Icon from './Icon.jsx';
 import { EmptyState } from './States.jsx';
+import { getLang, tr } from '../../i18n/index.js';
 
 /**
  * Table with search, sortable columns, pagination, and card layout on mobile
  * (cells carry data-label from the column title).
  *   columns: [{ title, render(row), sort?(row) }]
  */
-export default function DataTable({ columns, rows, searchText, pageSize = 10, emptyTitle = 'لا توجد نتائج', rowClass, search = true }) {
+export default function DataTable({ columns, rows, searchText, pageSize = 10, emptyTitle = tr('لا توجد نتائج'), rowClass, search = true }) {
   const [q, setQ] = useState('');
   const [sort, setSort] = useState({ i: null, dir: 1 });
   const [page, setPage] = useState(0);
@@ -31,12 +32,12 @@ export default function DataTable({ columns, rows, searchText, pageSize = 10, em
       {search && searchText && (
         <div className="tsearch">
           <Icon name="search" />
-          <input type="search" placeholder="بحث" aria-label="بحث في الجدول" value={q} onChange={(e) => { setQ(e.target.value); setPage(0); }} />
+          <input type="search" placeholder={tr('بحث')} aria-label={tr('بحث في الجدول')} value={q} onChange={(e) => { setQ(e.target.value); setPage(0); }} />
         </div>
       )}
       <div className="tw">
         {!view.length ? (
-          <EmptyState icon="db-off" title={emptyTitle} text="جرّب تغيير البحث أو التصفية." />
+          <EmptyState icon="db-off" title={emptyTitle} text={tr('جرّب تغيير البحث أو التصفية.')} />
         ) : (
           <>
             <table>
@@ -49,7 +50,7 @@ export default function DataTable({ columns, rows, searchText, pageSize = 10, em
                       aria-sort={c.sort ? (sort.i === i ? (sort.dir > 0 ? 'ascending' : 'descending') : 'none') : undefined}
                       onClick={c.sort ? () => setSort((s) => ({ i, dir: s.i === i ? -s.dir : 1 })) : undefined}
                     >
-                      {c.title}{sort.i === i ? (sort.dir > 0 ? ' ▲' : ' ▼') : ''}
+                      {tr(c.title)}{sort.i === i ? (sort.dir > 0 ? ' ▲' : ' ▼') : ''}
                     </th>
                   ))}
                 </tr>
@@ -57,16 +58,16 @@ export default function DataTable({ columns, rows, searchText, pageSize = 10, em
               <tbody>
                 {slice.map((r, ri) => (
                   <tr key={r.id ?? ri} className={rowClass ? rowClass(r) : ''}>
-                    {columns.map((c) => <td key={c.title} data-label={c.title}>{c.render(r)}</td>)}
+                    {columns.map((c) => <td key={c.title} data-label={tr(c.title)}>{c.render(r)}</td>)}
                   </tr>
                 ))}
               </tbody>
             </table>
             {pages > 1 && (
               <div className="pager">
-                <button type="button" className="btn sm" disabled={cur === 0} aria-label="السابق" onClick={() => setPage(cur - 1)}><Icon name="chevron-right" /></button>
+                <button type="button" className="btn sm" disabled={cur === 0} aria-label={tr('السابق')} onClick={() => setPage(cur - 1)}><Icon name={getLang() === 'en' ? 'chevron-left' : 'chevron-right'} /></button>
                 <span>{cur + 1} / {pages} ({view.length})</span>
-                <button type="button" className="btn sm" disabled={cur >= pages - 1} aria-label="التالي" onClick={() => setPage(cur + 1)}><Icon name="chevron-left" /></button>
+                <button type="button" className="btn sm" disabled={cur >= pages - 1} aria-label={tr('التالي')} onClick={() => setPage(cur + 1)}><Icon name={getLang() === 'en' ? 'chevron-right' : 'chevron-left'} /></button>
               </div>
             )}
           </>

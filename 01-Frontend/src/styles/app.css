@@ -164,7 +164,7 @@ tr:hover td{background:none}tr.me td{background:none}tr.me{background:var(--sb)}
 .lc .in{padding:24px}
 .lc .lg{text-align:center;margin-bottom:18px}
 .lc .lg svg{margin-bottom:6px}
-.acct{background:var(--hover);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--tx2);margin-top:14px;direction:rtl}
+.acct{background:var(--hover);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--tx2);margin-top:14px}
 .acct code{direction:ltr;unicode-bidi:embed;color:var(--tx)}
 .sp2{display:inline-block;width:16px;height:16px;border:2px solid #fff;border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}

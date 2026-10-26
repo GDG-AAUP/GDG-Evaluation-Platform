@@ -150,7 +150,7 @@ export function hall(
       const row = rankRows(db, month, {
         campus,
         teamId: team.id,
-      })[0];
+      }).find((item) => item.total > 0);
 
       const member = row && userById(db, row.userId);
 
@@ -178,7 +178,7 @@ export function hall(
       )
     : null;
 
-  const activityAward = award?.basis === "activity";
+  const activityAward = award?.basis === "points";
 
   const archived = !!db.snaps?.[month];
 
@@ -224,7 +224,7 @@ winnerActivities: winner
   : [],
 
 stale: !!award && !valid,
-    ratedCount: rankRows(db, month, { campus }).length,
+    ratedCount: rankRows(db, month, { campus }).filter((row) => row.total > 0).length,
     memberCount: db.users.filter(
       (member) =>
         member.campus === campus &&
@@ -261,7 +261,7 @@ export function selectWinner(
 
   if (!group || actor.id === userId) {
     throw E400(
-      "اختر عضوًا من متصدري الأنشطة في المجموعات الأربع.",
+      "اختر عضوًا من متصدري النقاط في المجموعات الأربع.",
     );
   }
 
@@ -277,7 +277,7 @@ export function selectWinner(
     teamName: group.name,
     campus,
     month,
-    basis: "activity",
+    basis: "points",
     selectedBy: actor.id,
     selectedAt: nowTs(db),
   };
@@ -292,7 +292,7 @@ export function selectWinner(
     `${CAMPUS[campus]} / ${month}`,
     old?.name || "—",
     winner.name,
-    "اختيار من متصدري تقييم الأنشطة",
+    "اختيار من متصدري النقاط",
   );
 
   return { ...winner };

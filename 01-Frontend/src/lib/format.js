@@ -1,9 +1,13 @@
 import { MONTHS_AR } from './constants.js';
+import { getLang } from '../i18n/index.js';
+
+const MONTHS_EN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 /** "2026-10" -> "تشرين الأول 2026" */
 export function monthLabel(id) {
   const [y, m] = String(id).split('-');
-  return `${MONTHS_AR[Number(m) - 1] || m} ${y}`;
+  const names = getLang() === 'en' ? MONTHS_EN : MONTHS_AR;
+  return `${names[Number(m) - 1] || m} ${y}`;
 }
 
 /** "2026-12" -> "2027-01" */
@@ -14,14 +18,14 @@ export function nextMonth(id) {
   return `${y}-${String(m).padStart(2, '0')}`;
 }
 
-const LOCALE = 'ar-u-nu-latn'; // Arabic, Western digits
+const locale = () => (getLang() === 'en' ? 'en-GB-u-nu-latn' : 'ar-u-nu-latn'); // Western digits
 
 export function fmtDateTime(ts) {
-  return new Date(ts).toLocaleString(LOCALE, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  return new Date(ts).toLocaleString(locale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
 export function fmtDate(ts) {
-  return new Date(ts).toLocaleDateString(LOCALE, { day: 'numeric', month: 'long', year: 'numeric' });
+  return new Date(ts).toLocaleDateString(locale(), { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 /** Two-letter avatar initials from a full name. */
