@@ -1,12 +1,3 @@
-"""
-The ONLY door between the chatbot and the data.
-
-Both the mock and the real client implement the same methods, so switching from fake
-data to the real backend = changing BACKEND_MODE in .env. Nothing else changes.
-
-Every method takes the user's Bearer token. The *model* never sees the token and never
-chooses who the user is. The backend decides what that token may read.
-"""
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
