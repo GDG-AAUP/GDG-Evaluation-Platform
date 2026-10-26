@@ -1,12 +1,3 @@
-"""
-Fake backend with fake data, so the chatbot can be built and tested WITHOUT waiting for
-the real backend. It imitates:
-  * the real response shapes (see 02-Backend/docs/api.md), and
-  * the permission rules (Member / Manager / Organizer), so we can test refusals too.
-
-Endpoints marked PLANNED do not exist in the real backend yet. Their shape here is OUR
-PROPOSAL and must be agreed with the Backend team (see docs/backend_requests.md).
-"""
 from __future__ import annotations
 
 from datetime import datetime
