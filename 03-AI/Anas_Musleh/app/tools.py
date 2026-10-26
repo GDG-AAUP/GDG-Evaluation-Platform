@@ -1,13 +1,3 @@
-"""
-Tools = the ONLY actions the model may request. All of them are READ-ONLY.
-There is deliberately no tool that writes, edits or deletes anything (Q45).
-
-Safety design (important - this is what the supervisor will ask about):
-  * The Bearer token lives here, in the executor. The model never sees it.
-  * No tool takes a `user_id` for "my ..." questions: identity comes from the token only.
-  * Every call goes to the backend, which decides what this token may read (403 otherwise).
-  * Errors are returned to the model as data, so it can explain them instead of guessing.
-"""
 from __future__ import annotations
 
 from datetime import date, datetime
