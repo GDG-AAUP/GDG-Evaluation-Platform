@@ -1,13 +1,3 @@
-"""
-The "brain loop" (Gemini function calling). Step by step:
-
-  1. Send the conversation + the list of tools to the model.
-  2. The model either answers in text, OR asks us to call a tool (a "function call").
-  3. If it asks for a tool, WE run it (with the user's token) and send the result back.
-  4. Repeat until the model answers in text (max MAX_TOOL_ROUNDS rounds, to stop loops).
-
-The model never touches the backend itself - it only asks, and our code decides and executes.
-"""
 from __future__ import annotations
 
 import time
