@@ -1,10 +1,3 @@
-"""
-The System Prompt = the assistant's permanent instructions.
-Prompt rules are only the LAST line of defense: real permission checks happen in the backend.
-
-It contains a ONE-SHOT example (exactly one worked example) so the model copies the pattern:
-question -> which tool -> how to phrase the answer.
-"""
 from datetime import date
 
 ARABIC_MONTHS = ["", "كانون الثاني", "شباط", "آذار", "نيسان", "أيار", "حزيران", "تموز", "آب",
