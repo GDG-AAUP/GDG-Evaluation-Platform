@@ -5,7 +5,8 @@ from datetime import date, datetime
 from .backend_client import BackendClient
 from .errors import BackendError
 
-MONTH = {"type": "integer", "description": "Month number 1-12. Compute it from today's date for 'this month'/'last month'."}
+MONTH = {"type": "integer", "description": "Month number 1-12. Compute it from today's date for 'this month'/'last month'. "
+                                           "OMIT it when the user names only a year (then pass just the year = the whole year)."}
 YEAR = {"type": "integer", "description": "4-digit year. Compute it from today's date."}
 CAMPUS = {"type": "string", "description": "Campus name: Jenin or Ramallah. Omit to use the user's own campus."}
 TEAM = {"type": "string", "description": "Team name exactly as returned by list_teams (e.g. Technical). Omit to use the user's own team."}
@@ -116,6 +117,19 @@ class ToolExecutor:
             year = self.today.year if month <= self.today.month else self.today.year - 1
         return month, int(year)
 
+    def _period(self, month, year) -> tuple[int | None, int]:
+        """Flexible period for points/evaluations.
+        nothing given -> the current month | only a year -> the WHOLE year (month None) | month given -> that month."""
+        if month is None and year is not None:
+            return None, int(year)
+        return self._ym(month, year)
+
+    def _ym_required(self, month, year) -> tuple[int, int]:
+        """Rankings are monthly: a bare year is ambiguous, so make the model ask the user for the month."""
+        if month is None and year is not None:
+            raise BackendError("MONTH_REQUIRED", f"Rankings are monthly. Ask the user which month of {int(year)}.", 400)
+        return self._ym(month, year)
+
     def _campus(self, name: str | None) -> dict:
         campuses = self.client.list_campuses(self.token)
         if not name:
@@ -163,8 +177,8 @@ class ToolExecutor:
         entries = self.client.my_points(self.token)
         raw_count = len(entries)
         if month is not None or year is not None:
-            m, y = self._ym(month, year)
-            entries = [e for e in entries if (d := self._date_of(e["effectiveAt"])).month == m and d.year == y]
+            m, y = self._period(month, year)
+            entries = [e for e in entries if (d := self._date_of(e["effectiveAt"])).year == y and (m is None or d.month == m)]
         if start_date:
             entries = [e for e in entries if self._date_of(e["effectiveAt"]) >= date.fromisoformat(start_date)]
         if end_date:
@@ -181,18 +195,18 @@ class ToolExecutor:
                 "entries": entries[:limit], "notes": notes}
 
     def t_get_member_points(self, member_name, month=None, year=None):
-        m, y = self._ym(month, year)
+        m, y = self._period(month, year)
         return self.client.member_points(self.token, member_name, m, y)
 
     def t_get_points_i_awarded(self, month=None, year=None):
-        m, y = self._ym(month, year)
+        m, y = self._period(month, year)
         return self.client.points_awarded_by_me(self.token, m, y)
 
     def t_get_leaderboard(self, scope, campus_name=None, team_name=None, month=None, year=None, limit=None):
         scope = (scope or "").lower()
         if scope not in ("team", "campus"):
             _bad("scope must be 'team' or 'campus'")
-        m, y = self._ym(month, year)
+        m, y = self._ym_required(month, year)
         team = self._team(team_name, campus_name) if scope == "team" else None
         campus = self._campus(campus_name) if scope == "campus" else next(
             c for c in self.client.list_campuses(self.token) if c["id"] == team["campusId"])
@@ -211,11 +225,11 @@ class ToolExecutor:
         return res
 
     def t_get_my_ranking(self, scope="team", month=None, year=None):
-        m, y = self._ym(month, year)
+        m, y = self._ym_required(month, year)
         return self.client.my_ranking(self.token, (scope or "team").lower(), m, y)
 
     def t_get_my_evaluations(self, month=None, year=None, limit=None):
-        m, y = (self._ym(month, year) if (month is not None or year is not None) else (None, None))
+        m, y = (self._period(month, year) if (month is not None or year is not None) else (None, None))
         res = self.client.my_evaluations(self.token, m, y, int(limit) if limit else None)
         res["notes"] = ["Evaluations have NO activity-description field: only activityName and comments exist. "
                         "If asked for a description, say it is not available and give the activity name and comments, labeled correctly."]
@@ -236,14 +250,14 @@ class ToolExecutor:
 
     def t_get_team_activity_summary(self, team_name=None, campus_name=None, month=None, year=None, activity_keyword=None):
         team = self._team(team_name, campus_name)
-        m, y = self._ym(month, year)
+        m, y = self._period(month, year)
         res = self.client.team_activity_summary(self.token, team["id"], m, y, activity_keyword)
         res["team"] = team["name"]
         return res
 
     def t_get_manager_evaluations(self, campus_name=None, month=None, year=None, manager_name=None):
         campus = self._campus(campus_name)
-        m, y = self._ym(month, year)
+        m, y = self._period(month, year)
         try:
             res = self.client.manager_evaluations(self.token, campus["id"], m, y, manager_name)
         except BackendError as e:

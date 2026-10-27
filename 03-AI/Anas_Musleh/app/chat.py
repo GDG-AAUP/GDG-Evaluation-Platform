@@ -41,7 +41,13 @@ def main() -> int:
             break
         if not q:
             continue
-        turn = assistant.ask(q)
+        try:
+            turn = assistant.ask(q)
+        except Exception as e:                       # Gemini down / quota / network: keep chatting
+            print(f"\n[خطأ] تعذّر الحصول على إجابة الآن ({type(e).__name__}). لم يُحفظ هذا السؤال، أعد المحاولة بعد قليل.")
+            if args.debug:
+                print(f"   {str(e)[:200]}")
+            continue
         if args.debug:
             for t in turn.tool_calls:
                 print(f"   [tool] {t['name']}({t['args']}) -> {str(t['result'])[:120]}")
