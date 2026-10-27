@@ -70,23 +70,30 @@ class Assistant:
                 raise
 
     def ask(self, text: str) -> Turn:
+        """One question. If ANYTHING fails (Gemini down, quota, network...), the history is rolled back to
+        how it was before this question, so a failed question never pollutes the next one."""
+        start = len(self.history)
         self.history.append(types.Content(role="user", parts=[types.Part(text=text)]))
         trace: list[dict] = []
-        for _ in range(config.MAX_TOOL_ROUNDS):
-            resp = self._generate()
-            calls = resp.function_calls or []
-            if not calls:
-                answer = (resp.text or "").strip() or "عذراً، ما قدرت أجهّز إجابة. جرّب تعيد صياغة السؤال."
-                self.history.append(types.Content(role="model", parts=[types.Part(text=answer)]))
-                return Turn(answer, trace)
-            self.history.append(resp.candidates[0].content)          # the model's tool request
-            parts = []
-            for call in calls:
-                args = dict(call.args or {})
-                result = self.executor.run(call.name, args)          # OUR code runs the tool
-                trace.append({"name": call.name, "args": args, "result": result})
-                parts.append(types.Part.from_function_response(name=call.name, response=result))
-            self.history.append(types.Content(role="user", parts=parts))
-        msg = "الطلب احتاج خطوات أكثر من المسموح. جرّب سؤالاً أبسط أو أكثر تحديداً."
-        self.history.append(types.Content(role="model", parts=[types.Part(text=msg)]))
-        return Turn(msg, trace)
+        try:
+            for _ in range(config.MAX_TOOL_ROUNDS):
+                resp = self._generate()
+                calls = resp.function_calls or []
+                if not calls:
+                    answer = (resp.text or "").strip() or "عذراً، ما قدرت أجهّز إجابة. جرّب تعيد صياغة السؤال."
+                    self.history.append(types.Content(role="model", parts=[types.Part(text=answer)]))
+                    return Turn(answer, trace)
+                self.history.append(resp.candidates[0].content)          # the model's tool request
+                parts = []
+                for call in calls:
+                    args = dict(call.args or {})
+                    result = self.executor.run(call.name, args)          # OUR code runs the tool
+                    trace.append({"name": call.name, "args": args, "result": result})
+                    parts.append(types.Part.from_function_response(name=call.name, response=result))
+                self.history.append(types.Content(role="user", parts=parts))
+            msg = "الطلب احتاج خطوات أكثر من المسموح. جرّب سؤالاً أبسط أو أكثر تحديداً."
+            self.history.append(types.Content(role="model", parts=[types.Part(text=msg)]))
+            return Turn(msg, trace)
+        except BaseException:
+            del self.history[start:]          # drop the unanswered question and any half-finished tool turns
+            raise
