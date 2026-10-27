@@ -1,6 +1,6 @@
-# Evaluation results (what was actually verified)
+# Evaluation results 
 
-Setup: mock backend (fake data), Gemini model `<fill in the exact model name>`, run on `<fill in dates>`.
+Setup: mock backend (fake data), Gemini model "gemini-3.1-flash-lite", run on "2026-10-23".
 Cases: the 45 scope questions + 2 extra access cases (42b: manager asks for audit logs, 45b: organizer asks for a write), each in 2 phrasings.
 
 ## What the automatic check does and does not prove
