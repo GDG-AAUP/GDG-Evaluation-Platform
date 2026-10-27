@@ -1,9 +1,3 @@
-"""Terminal chat.   Examples:
-     python -m app.chat --user ahmad        (mock mode, logged in as a Member)
-     python -m app.chat --user sara         (mock mode, a Manager)
-     python -m app.chat --user admin        (mock mode, an Organizer)
-     BACKEND_MODE=real GDG_BEARER_TOKEN=... python -m app.chat   (real backend)
-"""
 import argparse
 import os
 import sys
