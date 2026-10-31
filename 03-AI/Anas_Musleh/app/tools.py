@@ -24,8 +24,9 @@ TOOL_SPECS = [
                     "limit": {"type": "integer", "description": "Max entries to return (default 10, max 50). Newest first."}},
      "required": []},
     {"name": "get_member_points",
-     "description": "Total points of ONE named member for a month. Managers: own team only. Organizers: anyone. Members: not allowed.",
-     "properties": {"member_name": {"type": "string", "description": "Member's name or part of it."}, "month": MONTH, "year": YEAR},
+     "description": "Total points of ONE named member for a month. Managers: own team only. Organizers: anyone. Members: not allowed. If the user names a team or a campus for the member, pass team_name and campus_name: the team is then checked.",
+     "properties": {"member_name": {"type": "string", "description": "Member's name or part of it."}, "month": MONTH, "year": YEAR,
+                    "team_name": TEAM, "campus_name": CAMPUS},
      "required": ["member_name"]},
     {"name": "get_points_i_awarded",
      "description": "Total points the CURRENT manager/organizer awarded (as the actor) in a month.",
@@ -191,12 +192,23 @@ class ToolExecutor:
             notes.append("The backend does not yet say whether an entry is a reversal or was reversed.")
         if entries and "activityDescription" not in entries[0]:
             notes.append("Activity descriptions are not provided by the backend yet.")
-        return {"totalPointsInPeriod": sum(e["points"] for e in entries), "entriesInPeriod": len(entries),
+        if not entries:     # X14 / X22: "you got 0 points in March 2020" - nothing proves it, the backend only returns the latest 50 entries
+            notes.append("No entries were found for this period. Say there are NO RECORDS for it; do not say the user got 0 points. "
+                         "Only the latest 50 entries can be read, so an old period may simply be out of reach.")
+        return {"totalPointsInPeriod": sum(e["points"] for e in entries), "entriesInPeriod": len(entries), "hasData": bool(entries),
                 "entries": entries[:limit], "notes": notes}
 
-    def t_get_member_points(self, member_name, month=None, year=None):
+    def t_get_member_points(self, member_name, month=None, year=None, team_name=None, campus_name=None):
         m, y = self._period(month, year)
-        return self.client.member_points(self.token, member_name, m, y)
+        if team_name:        # X11: "Khaled in the Robotics team" got the points of Khaled Ali of another team
+            self._team(team_name, campus_name)      # raises TEAM_NOT_FOUND / AMBIGUOUS_TEAM
+        try:
+            return self.client.member_points(self.token, member_name, m, y)
+        except BackendError as e:
+            if e.code == "USER_NOT_FOUND":     # "Rana" never matches the stored "رنا"
+                raise BackendError("USER_NOT_FOUND", e.message + " (Names are stored in Arabic letters. If the user wrote the name in "
+                                   "English letters, call this tool ONCE more with the Arabic spelling.)", e.status)
+            raise
 
     def t_get_points_i_awarded(self, month=None, year=None):
         m, y = self._period(month, year)
@@ -222,11 +234,19 @@ class ToolExecutor:
         res["campus"] = campus["name"]
         if team:
             res["team"] = team["name"]
+        res["scopeNote"] = ("This ranks MEMBERS only. There is no ranking or total for TEAMS: never add up member points to compare teams. "
+                            "If the user asks how a team compares with other teams, say that this comparison is not available.")
         return res
 
     def t_get_my_ranking(self, scope="team", month=None, year=None):
         m, y = self._ym_required(month, year)
-        return self.client.my_ranking(self.token, (scope or "team").lower(), m, y)
+        res = self.client.my_ranking(self.token, (scope or "team").lower(), m, y)
+        if "peopleSharingMyRank" in res:        # that count INCLUDES the user: the model once said "with two others" for 2
+            res["othersSharingMyRank"] = res["peopleSharingMyRank"] - 1
+            res["note"] = ("peopleSharingMyRank counts the user too. Say 'tied with N others' using othersSharingMyRank "
+                           "(0 = nobody else shares the rank). Earlier months can be read by calling this tool again with that month and year: "
+                           "never say previous periods cannot be seen.")
+        return res
 
     def t_get_my_evaluations(self, month=None, year=None, limit=None):
         m, y = (self._period(month, year) if (month is not None or year is not None) else (None, None))
@@ -266,7 +286,22 @@ class ToolExecutor:
                                    "call get_my_evaluations instead.)", e.status)
             raise
         res["campus"] = campus["name"]
+        if manager_name and not res.get("managers"):   # "Sara" never matches the stored "سارة يوسف": an empty list read as "no data"
+            everyone = self.client.manager_evaluations(self.token, campus["id"], m, y, None)
+            res["matched"] = False
+            res["availableManagers"] = [r["manager"] for r in everyone.get("managers", [])]
+            res["note"] = ("No manager matches that name. Names are stored in Arabic letters: if the user wrote an English spelling, "
+                           "call this tool ONCE more with the Arabic spelling taken from availableManagers. If none fits, say that no "
+                           "manager with that name was found. Do NOT say there is no evaluation data.")
         return res
 
     def t_get_audit_logs(self, limit=10):
-        return self.client.audit_logs(self.token, max(1, min(int(limit or 10), 50)))
+        res = self.client.audit_logs(self.token, max(1, min(int(limit or 10), 50)))
+        if isinstance(res, dict) and "logs" in res:     # Q42.2 said "the last 10" for a single entry
+            res["returnedEntries"] = len(res["logs"])
+            for row in res["logs"]:             # POINT_REVERSED -> "point reversed": the model kept printing the raw code
+                for k in ("action", "entity"):
+                    if isinstance(row.get(k), str):
+                        row[k] = row[k].replace("_", " ").lower()
+            res["note"] = "Say how many entries were returned (returnedEntries). Never say 'the last N' with N larger than that."
+        return res
