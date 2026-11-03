@@ -46,6 +46,12 @@ function fakeServer({ me, token = 'tok-1' } = {}) {
     const body = init.body ? JSON.parse(init.body) : undefined;
     calls.push({ method, path: u.pathname, search: u.search, body, auth: init.headers && init.headers.Authorization });
     const p = u.pathname;
+    if (p === '/api/auth/complete-registration' && method === 'POST') {
+      // Like the real route: the body must stay EMPTY (no ids, email or role).
+      if (body && Object.keys(body).length) return fail(400, 'INVALID_REGISTRATION_DATA');
+      if (current.role === 'blocked') return fail(403, 'PROJECT_ACCESS_DENIED');
+      return ok({ id: current.id, name: current.name, role: current.role, teamId: current.teamId, isActive: true });
+    }
     if (p === '/api/auth/me') return ok({ id: current.id, name: current.name, role: current.role, isActive: true, teamId: current.teamId });
     if (p === '/api/campuses') return ok(state.campuses);
     if (p === '/api/teams' && method === 'GET') return ok(state.teams);
@@ -400,4 +406,19 @@ test('hall (welcome page): team leaders from public rankings, no winner / news w
   assert.equal(h.ratedCount, 3);
   assert.equal(h.memberCount, 3);
   assert.ok(s.calls.filter((c) => c.path.startsWith('/api/rankings')).every((c) => c.auth === undefined), 'public calls carry no token');
+});
+
+test('auth: completeRegistration posts an EMPTY body with the Bearer token and maps the linked account', async () => {
+  const s = fakeServer({ me: { id: 200, name: 'ليان', role: 'member', teamId: 10 } });
+  const u = await s.backend.completeRegistration();
+  assert.deepEqual(u, { id: '200', name: 'ليان', role: 'member', teamId: 10, isActive: true });
+  const call = s.calls.find((c) => c.path === '/api/auth/complete-registration');
+  assert.equal(call.method, 'POST');
+  assert.deepEqual(call.body, {});
+  assert.match(call.auth, /^Bearer .+/);
+});
+
+test('auth: completeRegistration surfaces a not-invited account as an Arabic error', async () => {
+  const s = fakeServer({ me: { id: 9, name: 'x', role: 'blocked', teamId: null } });
+  await assert.rejects(() => s.backend.completeRegistration(), (e) => e.status === 403 && e.message === 'حسابك غير فعّال أو غير مرتبط بدعوة مقبولة.');
 });

@@ -1,6 +1,6 @@
 //app.jsx
 import Activities from "./pages/Activities.jsx";
-import { useEffect } from "react";
+import { Suspense, lazy, useEffect } from "react";
 import { AppDataProvider } from "./context/AppDataContext.jsx";
 import { AuthProvider, useAuth } from "./context/AuthContext.jsx";
 import { ThemeProvider } from "./context/ThemeContext.jsx";
@@ -19,6 +19,10 @@ import { BranchProvider } from "./context/BranchContext.jsx";
 import { matchPath, navigate, usePath } from "./router/router.jsx";
 import { ROUTES } from "./routes.jsx";
 import MyPoints from "./pages/MyPoints.jsx";
+import { INVITE_ROUTE } from "./lib/invitation.js";
+
+// Real backend only: page opened from the Clerk invitation e-mail (loaded lazily, needs Clerk).
+const AcceptInvitation = lazy(() => import("./clerk/AcceptInvitation.jsx"));
 
 
 function Routes() {
@@ -28,6 +32,7 @@ function Routes() {
   // Redirects (done in an effect, never during render).
   useEffect(() => {
     if (!ready) return;
+    if (path === INVITE_ROUTE) return;
     if (!user && !["/", "/login", ""].includes(path))
       navigate("/login", { replace: true });
     else if (user && path === "/login")
@@ -40,6 +45,8 @@ function Routes() {
         <Skeleton />
       </div>
     );
+  if (path === INVITE_ROUTE)
+    return USE_MOCK ? <NotFound /> : <Suspense fallback={null}><AcceptInvitation /></Suspense>;
   if (path === "/" || path === "") return <Welcome />;
   if (!user) return path === "/login" ? <Login /> : null;
   if (path === "/" || path === "/login") return null;

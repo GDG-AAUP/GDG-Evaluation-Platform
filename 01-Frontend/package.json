@@ -4,7 +4,9 @@
   "private": true,
   "description": "GDG Evaluation Platform: Arabic RTL frontend (React)",
   "type": "module",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -14,6 +16,7 @@
     "test": "node --test \"src/**/*.test.js\""
   },
   "dependencies": {
+    "@clerk/clerk-react": "^5.61.11",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-icons": "^5.4.0"

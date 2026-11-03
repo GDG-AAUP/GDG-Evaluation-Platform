@@ -146,4 +146,15 @@ export default {
   'الأعضاء التابعون لمجموعتك وفرعك فقط.': 'Only members of your group and branch.',
   'أنشطتي ونقاطي': 'My activities and points',
   'سجلك الشخصي للعرض فقط؛ لا يمكنك تقييم نفسك.': 'Your personal record is view only; you cannot rate yourself.',
+  // Real backend / Clerk
+  'إعداد ناقص': 'Missing setup',
+  'الوضع الحقيقي (VITE_USE_MOCK=false) يحتاج مفتاح Clerk العام. أضف السطر التالي إلى الملف .env.local ثم أعد تشغيل التطبيق:': 'Real mode (VITE_USE_MOCK=false) needs the public Clerk key. Add the following line to the .env.local file, then restart the app:',
+  'تم تسجيل دخولك، لكن تعذّر تحميل حسابك. قد يكون حسابك غير فعّال أو غير مرتبط بدعوة مقبولة، أو أن الخادم غير متاح.': 'You are signed in, but your account could not be loaded. It may be inactive or not linked to an accepted invitation, or the server may be unavailable.',
+  'قبول الدعوة': 'Accept invitation',
+  'تعذّر إكمال التسجيل.': 'Could not complete registration.',
+  'جارٍ ربط حسابك…': 'Linking your account…',
+  'تم قبول هذه الدعوة من قبل. سجّل الدخول للمتابعة.': 'This invitation was already accepted. Sign in to continue.',
+  'رابط الدعوة غير صالح أو منتهي. اطلب من المنظّم دعوة جديدة.': 'The invitation link is invalid or expired. Ask the organizer for a new invitation.',
+  'الذهاب لتسجيل الدخول': 'Go to sign in',
+  'العودة لتسجيل الدخول': 'Back to sign in',
 }
