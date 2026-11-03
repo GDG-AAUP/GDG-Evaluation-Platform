@@ -3,7 +3,7 @@
 //   index.html + assets/app.js + assets/app.css   -> normal static hosting
 //   gdg-evaluation.html                            -> ONE self-contained file (double-click to open)
 //
-// Env: VITE_USE_MOCK (default "true"), VITE_API_URL (default "/api")
+// Env: VITE_USE_MOCK (default "true"), VITE_API_URL (default "/api"), VITE_CLERK_PUBLISHABLE_KEY (real backend only)
 import { build } from 'esbuild';
 import { readFileSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
 
@@ -11,6 +11,7 @@ const OUT = 'dist-single';
 const env = {
   VITE_USE_MOCK: process.env.VITE_USE_MOCK ?? 'true',
   VITE_API_URL: process.env.VITE_API_URL ?? '/api',
+  VITE_CLERK_PUBLISHABLE_KEY: process.env.VITE_CLERK_PUBLISHABLE_KEY ?? '',
 };
 
 rmSync(OUT, { recursive: true, force: true });
@@ -29,6 +30,7 @@ await build({
     'process.env.NODE_ENV': '"production"',
     'import.meta.env.VITE_USE_MOCK': JSON.stringify(env.VITE_USE_MOCK),
     'import.meta.env.VITE_API_URL': JSON.stringify(env.VITE_API_URL),
+    'import.meta.env.VITE_CLERK_PUBLISHABLE_KEY': JSON.stringify(env.VITE_CLERK_PUBLISHABLE_KEY),
   },
   logLevel: 'info',
   logOverride: { 'empty-import-meta': 'silent' },

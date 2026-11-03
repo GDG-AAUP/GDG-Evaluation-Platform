@@ -61,6 +61,16 @@ export function createBackend(http, { now = () => new Date() } = {}) {
       return mapUser(u, dir.teamsById);
     },
 
+    /**
+     * Called once after Clerk accepted an invitation (sign-up/sign-in with the ticket).
+     * Sends an EMPTY body: the backend links the Clerk identity to the invited account itself
+     * (never send ids, email or role). Returns the linked account ({id,name,role,teamId,isActive}).
+     */
+    async completeRegistration() {
+      const u = await http.post('/auth/complete-registration', {});
+      return { id: String(u.id), name: u.name, role: u.role, teamId: u.teamId ?? null, isActive: u.isActive !== false };
+    },
+
     async meta() {
       const dir = await directory();
       const cur = monthOf(now().toISOString());

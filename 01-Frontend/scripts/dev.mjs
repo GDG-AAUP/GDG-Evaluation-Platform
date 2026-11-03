@@ -19,6 +19,7 @@ const ctx = await context({
     'process.env.NODE_ENV': '"development"',
     'import.meta.env.VITE_USE_MOCK': JSON.stringify(process.env.VITE_USE_MOCK ?? 'true'),
     'import.meta.env.VITE_API_URL': JSON.stringify(process.env.VITE_API_URL ?? '/api'),
+    'import.meta.env.VITE_CLERK_PUBLISHABLE_KEY': JSON.stringify(process.env.VITE_CLERK_PUBLISHABLE_KEY ?? ''),
   },
   logOverride: { 'empty-import-meta': 'silent' },
 });

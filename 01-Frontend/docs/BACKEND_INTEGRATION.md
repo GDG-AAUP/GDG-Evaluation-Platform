@@ -54,3 +54,10 @@
 - **لا endpoints لها بالباك**: النظرة العامة، الأرشيف وإغلاق الشهر (الخدمة موجودة بلا route)، السياسات (للقراءة فقط بقيم افتراضية)، System Logs، المساعد، التقييمات (15 بندًا) والأنشطة والأخبار والجوائز، وسجل النقاط الكامل.
 - **تعديل اسم الفريق أو مديريه**: لا endpoint (يتوفر `PATCH /teams/:id/manager` للاستبدال، غير مربوط بالواجهة بعد).
 - أي عملية غير مدعومة ترمي `ApiError(501)` برسالة عربية واضحة، ولا تنهار الشاشة.
+
+## Sign-in (Clerk) and invitations
+
+The real backend has no `/auth/login`: accounts and passwords live in Clerk. With `VITE_USE_MOCK=false` the login page shows Clerk's sign-in,
+every request carries a fresh Clerk session token, and `/accept-invitation` finishes the invitation flow.
+Setup, the invitation URL rule (no `#`, no query) and what to verify on the first real run: see [`CLERK_SETUP.md`](CLERK_SETUP.md).
+
