@@ -143,3 +143,9 @@ export const MANAGER_CRITERIA = Object.freeze([
   { id: 'communication', label: 'التواصل والتعاون', weight: 20 },
   { id: 'teamResults', label: 'نتائج الفريق', weight: 20 },
 ].map((c) => Object.freeze(c)));
+
+/** Weighted score of four 0-100 criterion scores, rounded like the backend ([85,80,90,75] -> 83). */
+export function weightedManagerScore(scores) {
+  const sum = MANAGER_CRITERIA.reduce((a, c, i) => a + (Number(scores[i]) || 0) * c.weight, 0);
+  return Math.round(sum / 100);
+}

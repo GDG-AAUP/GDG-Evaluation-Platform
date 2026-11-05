@@ -213,12 +213,12 @@ export function createBackend(http, { now = () => new Date() } = {}) {
      * UI "reason" doubles as the backend's required `activityName` (trimmed to 100).
      * The backend range is -100..100 (the UI policy limit is applied before this call).
      */
-    async addPoints({ userId: uid, value, reason }) {
+    async addPoints({ userId: uid, value, reason, activity }) {
       const text = trimmed(reason);
       const entry = await http.post('/points', {
         userId: userId(uid),
         points: Number(value),
-        activityName: text.slice(0, 100),
+        activityName: (trimmed(activity) || text).slice(0, 100),
         reason: text,
       });
       return { total: null, entry: mapPointEntry(entry) };
@@ -437,6 +437,26 @@ export function createBackend(http, { now = () => new Date() } = {}) {
       if (!ym) throw new ApiError(400, 'الشهر غير صالح.');
       const res = await http.get(`/evaluations/managers/${userId(managerId)}/average`, ym);
       return { managerId: String(res.managerUserId), month, count: res.evaluationCount, average: res.averageScore };
+    },
+
+    /**
+     * Active managers with this month's evaluation count and average. The backend has no "list evaluations"
+     * endpoint, so this is one /average call per manager; a failing manager shows its error instead of breaking the page.
+     */
+    async managerEvaluations(month) {
+      const cur = month || monthOf(now().toISOString());
+      const managers = await self.listUsers({ role: 'manager', status: 'active' });
+      const rows = await Promise.all(managers.map(async (m) => {
+        const base = { id: m.id, name: m.name, campus: m.campus, teamsLabel: m.teamsLabel };
+        try {
+          const a = await self.managerAverage(m.id, cur);
+          return { ...base, count: a.count, average: a.average, error: '' };
+        } catch (e) {
+          return { ...base, count: 0, average: null, error: e.message };
+        }
+      }));
+      rows.sort((a, b) => a.name.localeCompare(b.name, 'ar'));
+      return { month: cur, criteria: MANAGER_CRITERIA, rows };
     },
   };
   return self;
