@@ -13,7 +13,6 @@ export const COMING_SOON_REAL = Object.freeze([
   '/organizer/awards',
   '/organizer/news',
   '/organizer/points',
-  '/organizer/evals',
   '/organizer/archive',
   '/organizer/syslog',
   '/organizer/policies',

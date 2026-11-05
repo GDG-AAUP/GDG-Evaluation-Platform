@@ -1,3 +1,5 @@
+import { USE_MOCK } from "../config.js";
+
 // Navigation per role. `icon` is a key of components/ui/Icon.jsx.
 //lib/nav.js
 
@@ -53,4 +55,11 @@ export function bottomTabs(role) {
     "/leaderboard",
   ];
   return { tabs: all.filter((n) => pick.includes(n.to)), more: true };
+}
+
+// Real backend only: pages that exist there (the mock keeps its own dashboards for these jobs).
+if (!USE_MOCK) {
+  const give = { to: "/give-points", icon: "star", label: "إضافة نقاط" };
+  NAV.organizer.splice(3, 0, give, { to: "/organizer/evals", icon: "calculator", label: "تقييم المدراء" });
+  NAV.manager.splice(3, 0, give);
 }

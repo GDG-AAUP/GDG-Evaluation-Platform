@@ -11,6 +11,8 @@ import { homeFor } from "./lib/home.js";
 import { isComingSoon } from "./lib/availability.js";
 import ComingSoon from "./pages/ComingSoon.jsx";
 import MyPointsLedger from "./pages/MyPointsLedger.jsx";
+import GivePoints from "./pages/GivePoints.jsx";
+import RealEvaluations from "./pages/organizer/RealEvaluations.jsx";
 import AppShell from "./components/layout/AppShell.jsx";
 import { Forbidden, NotFound, Skeleton } from "./components/ui/States.jsx";
 import Login from "./pages/Login.jsx";
@@ -65,6 +67,10 @@ if (isComingSoon(path, USE_MOCK)) {
   body = <ComingSoon />;
 } else if (!USE_MOCK && path === "/my-points" && ["member", "manager"].includes(user.role)) {
   body = <MyPointsLedger />;
+} else if (!USE_MOCK && path === "/give-points" && ["organizer", "manager"].includes(user.role)) {
+  body = <GivePoints />;
+} else if (!USE_MOCK && path === "/organizer/evals" && user.role === "organizer") {
+  body = <RealEvaluations />;
 } else if (path === "/activities") {
   body = <Activities />;
 } else if (

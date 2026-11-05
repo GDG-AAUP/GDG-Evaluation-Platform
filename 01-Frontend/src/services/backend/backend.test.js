@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 import { createHttp } from '../httpCore.js';
 import { createBackend } from './client.js';
 import { translateServerError } from './errorsAr.js';
+import { weightedManagerScore } from './adapters.js';
 
 const json = (status, body) => ({
   ok: status >= 200 && status < 300,
@@ -421,4 +422,32 @@ test('auth: completeRegistration posts an EMPTY body with the Bearer token and m
 test('auth: completeRegistration surfaces a not-invited account as an Arabic error', async () => {
   const s = fakeServer({ me: { id: 9, name: 'x', role: 'blocked', teamId: null } });
   await assert.rejects(() => s.backend.completeRegistration(), (e) => e.status === 403 && e.message === 'حسابك غير فعّال أو غير مرتبط بدعوة مقبولة.');
+});
+
+test('evaluations: weighted score follows the backend rounding ([85,80,90,75] -> 83)', () => {
+  assert.equal(weightedManagerScore([85, 80, 90, 75]), 83);
+  assert.equal(weightedManagerScore([100, 100, 100, 100]), 100);
+  assert.equal(weightedManagerScore([0, 0, 0, 0]), 0);
+});
+
+test('evaluations: managerEvaluations lists active managers with their monthly average; one failure does not break the list', async () => {
+  const s = fakeServer();
+  const res = await s.backend.managerEvaluations('2026-10');
+  assert.equal(res.month, '2026-10');
+  assert.equal(res.criteria.length, 4);
+  assert.deepEqual(res.rows.map((r) => r.id), ['100']);
+  assert.equal(res.rows[0].name, 'بشار');
+  assert.equal(typeof res.rows[0].count, 'number');
+  const avg = s.calls.find((c) => c.path === '/api/evaluations/managers/100/average');
+  assert.ok(avg && /year=2026/.test(avg.search) && /month=10/.test(avg.search));
+});
+
+test('points: addPoints uses the typed activity name, and falls back to the reason', async () => {
+  const s = fakeServer();
+  await s.backend.addPoints({ userId: '200', value: 15, reason: 'حضور وتفاعل', activity: 'ورشة React' });
+  const a = s.calls.filter((c) => c.path === '/api/points' && c.method === 'POST').pop();
+  assert.deepEqual(a.body, { userId: 200, points: 15, activityName: 'ورشة React', reason: 'حضور وتفاعل' });
+  await s.backend.addPoints({ userId: '200', value: -5, reason: 'تأخر' });
+  const b = s.calls.filter((c) => c.path === '/api/points' && c.method === 'POST').pop();
+  assert.equal(b.body.activityName, 'تأخر');
 });
