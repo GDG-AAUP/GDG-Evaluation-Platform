@@ -14,10 +14,10 @@ User question -> Gemini -> asks for a tool -> our code runs it (with the user's 
 |---|---|
 | Tools layer, system prompt (one-shot), Gemini loop, terminal chat | Built |
 | Mock backend (fake data + Member/Manager/Organizer permission rules) | Built, used by default |
-| Real backend client | Built for the 5 endpoints that exist today; the rest return `NOT_IMPLEMENTED` |
-| Tests without a key (permissions, dense ranking, tool safety, loop logic) | 43 passing (`python -m pytest -q`) |
-| Question bank (45 questions x 2 phrasings) + eval runner | Run against Gemini on the mock backend. Summary and limits: [docs/eval_results.md](docs/eval_results.md) |
-| Tested against the real Node backend + Clerk token | **Not done** |
+| Real backend client | Built for the existing endpoints plus rankings, audit logs and manager-evaluation averages (Phase 2); `member_points`, `points_awarded_by_me`, `my_evaluations`, `team_activity_summary` still return `NOT_IMPLEMENTED` |
+| Tests without a key (permissions, dense ranking, tool safety, loop logic) | 104 passing (`python -m pytest -q`; 43 + 61 Phase 2: real-backend contract, answer checks, suite integrity, fixes). Phase 2 fixes to prompts.py, tools.py and llm.py are listed in docs/FAILURE_LOG.md |
+| Question bank (45 questions x 2 phrasings) + eval runner | Run against Gemini on the mock backend. Summary and limits: [docs/eval_results.md](docs/eval_results.md). Phase 2: 23 extra cases + 46 extra phrasings, see [docs/EVALUATION_TEST_CASES.md](docs/EVALUATION_TEST_CASES.md) and [docs/FAILURE_LOG.md](docs/FAILURE_LOG.md) |
+| Tested against the real Node backend + Clerk token | **Not done.** Offline contract tests exist; steps in [docs/RUN_ON_REAL_BACKEND.md](docs/RUN_ON_REAL_BACKEND.md) |
 
 
 ## Structure

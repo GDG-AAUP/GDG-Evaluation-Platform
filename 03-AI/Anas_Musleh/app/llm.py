@@ -7,6 +7,7 @@ from google import genai
 from google.genai import errors, types
 
 from . import config
+from .lang import language_hint
 from .prompts import build_system_prompt
 from .tools import TOOL_SPECS, ToolExecutor
 
@@ -63,7 +64,7 @@ class Assistant:
         """One question. If ANYTHING fails (Gemini down, quota, network...), the history is rolled back to
         how it was before this question, so a failed question never pollutes the next one."""
         start = len(self.history)
-        self.history.append(types.Content(role="user", parts=[types.Part(text=text)]))
+        self.history.append(types.Content(role="user", parts=[types.Part(text=text + language_hint(text))]))
         trace: list[dict] = []
         try:
             for _ in range(config.MAX_TOOL_ROUNDS):

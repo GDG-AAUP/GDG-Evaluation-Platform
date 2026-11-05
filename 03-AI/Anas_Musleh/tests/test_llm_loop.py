@@ -116,7 +116,7 @@ def test_failed_question_leaves_no_trace_in_history(monkeypatch):
     turn = bot.ask("new question")
     assert turn.answer.startswith("حصلت")
     assert [c.role for c in bot.history] == ["user", "model", "user", "model"]
-    assert bot.history[0].parts[0].text == "new question"     # the old question is gone
+    assert bot.history[0].parts[0].text.startswith("new question")     # the old question is gone (an English question also carries the language note)
 
 
 def test_failure_midway_rolls_back_the_tool_turns_too(monkeypatch):
