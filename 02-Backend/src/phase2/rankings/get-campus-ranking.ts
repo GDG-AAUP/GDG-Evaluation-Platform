@@ -18,19 +18,23 @@ export async function getCampusRanking(
   const sql = `
 WITH bounds AS (
   SELECT
-    make_date($2::int, $3::int, 1)::timestamp AS month_start,
+    make_date($2::int, $3::int, 1)::timestamp AT TIME ZONE 'Asia/Hebron' AS month_start,
     (
       make_date($2::int, $3::int, 1)
       + INTERVAL '1 month'
-    )::timestamp AS month_end
+    )::timestamp AT TIME ZONE 'Asia/Hebron' AS month_end
 ),
 
 roster AS (
   SELECT DISTINCT h.user_id
   FROM assignment_history h
   JOIN teams t ON t.team_id = h.team_id
+  JOIN users ru ON ru.user_id = h.user_id
   CROSS JOIN bounds b
   WHERE t.campus_id = $1
+    AND h.role_at_time IN ('Member', 'Manager')
+    AND ru.role IN ('Member', 'Manager')
+    AND ru.deleted_at IS NULL
     AND h.effective_from < b.month_end
     AND (
       h.effective_to IS NULL
@@ -57,6 +61,7 @@ totals AS (
       JOIN teams ht ON ht.team_id = h.team_id
       WHERE h.user_id = p.user_id
         AND ht.campus_id = $1
+        AND h.role_at_time IN ('Member', 'Manager')
         AND p.effective_at >= h.effective_from
         AND (
           h.effective_to IS NULL

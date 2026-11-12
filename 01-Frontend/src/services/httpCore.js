@@ -10,6 +10,15 @@ import { translateServerError } from './backend/errorsAr.js';
  *   - auth     -> Authorization: Bearer <token>   (token comes from `getToken`, e.g. Clerk)
  * Bodies without a "data"/"error" key (the older mock-style contract) pass through unchanged.
  */
+/** Clerk can briefly return no token while a session settles: wait for one before sending. */
+export async function waitForToken(getToken, { attempts = 10, delayMs = 150 } = {}) {
+  for (let attempt = 1; ; attempt += 1) {
+    const token = await getToken();
+    if (token || attempt >= attempts) return token;
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+  }
+}
+
 export function createHttp({ baseUrl, getToken, onUnauthorized, fetchImpl, origin }) {
   const doFetch = fetchImpl || ((...a) => fetch(...a));
 
@@ -21,8 +30,8 @@ export function createHttp({ baseUrl, getToken, onUnauthorized, fetchImpl, origi
     return url.toString();
   }
 
-  async function request(method, path, { params, body, auth = true } = {}) {
-    const headers = { Accept: 'application/json' };
+  async function request(method, path, { params, body, auth = true, headers: extra } = {}) {
+    const headers = { Accept: 'application/json', ...(extra || {}) };
     if (body !== undefined) headers['Content-Type'] = 'application/json';
     if (auth && getToken) {
       const token = await getToken();
@@ -47,7 +56,8 @@ export function createHttp({ baseUrl, getToken, onUnauthorized, fetchImpl, origi
 
     if (!res.ok) {
       const { message, details } = translateServerError(res.status, data);
-      if (res.status === 401 && auth && onUnauthorized) onUnauthorized();
+      // A valid Clerk session with no project account is not an expired session.
+      if (res.status === 401 && auth && onUnauthorized && details?.code !== 'USER_NOT_FOUND_IN_DB') onUnauthorized();
       throw new ApiError(res.status, message, details);
     }
 

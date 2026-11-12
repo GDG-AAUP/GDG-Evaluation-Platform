@@ -1,4 +1,6 @@
 // Handles unexpected errors and returns a safe JSON response.
+const { logSystemEvent, logSystemEventThrottled } = require('../services/system-log.service')
+
 const errorHandler = (err, req, res, next) => {
   if (res.headersSent) {
     return next(err)
@@ -20,12 +22,14 @@ const errorHandler = (err, req, res, next) => {
     })
   }
   if (err.code === 'CLERK_UNAVAILABLE') {
+    logSystemEventThrottled('clerk-unavailable', 'warning', 'Identity provider request failed', 'auth')
     return res.status(503).json({
       error: { code: 'IDENTITY_PROVIDER_UNAVAILABLE', message: 'Identity verification is temporarily unavailable; retry later' },
     })
   }
 
   console.error('Unexpected request error:', err.name)
+  logSystemEvent('error', `Unexpected ${err.name} on ${req.method} ${req.baseUrl || req.path}`, 'api')
 
   return res.status(500).json({
     error: {

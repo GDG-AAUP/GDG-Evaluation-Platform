@@ -27,8 +27,8 @@ export const HOME_BY_ROLE = {
 export const DEFAULT_POLICIES = {
   managerCanEditOrMoveMembers: false, // Manager may edit members of his team
   membersInMultipleTeams: false, // a member may belong to more than one team
-  globalLeaderboardEnabled: true, // combined leaderboard of both campuses
-  maxPointsPerOperation: 50, // absolute limit for one points operation
+  globalLeaderboardEnabled: false, // not offered: Jenin and Ramallah have separate leaderboards
+  maxPointsPerOperation: 100, // absolute limit for one points operation (-100..100, nonzero)
   multipleManagersPerTeam: true, // a team may have more than one manager
 };
 

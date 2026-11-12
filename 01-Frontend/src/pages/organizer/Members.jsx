@@ -13,6 +13,7 @@ import { FilterBar, Segmented, Select } from '../../components/ui/Form.jsx';
 import { Avatar, Button, Card, IconButton, PageHeader } from '../../components/ui/Primitives.jsx';
 import { Async } from '../../components/ui/States.jsx';
 import { tr } from '../../i18n/index.js';
+import { navigate } from '../../router/router.jsx';
 
 const boldName = (key, name) => {
   const [a, b] = tr(key, { name: '\u0000' }).split('\u0000');
@@ -26,7 +27,10 @@ export default function Members() {
   const [f, setF] = useState({ tab: 'active', campus: '', teamId: '', role: 'member', status: '' });
   const set = (k) => (v) => setF((s) => ({ ...s, [k]: v, ...(k === 'campus' ? { teamId: '' } : {}) }));
   const deleted = f.tab === 'deleted';
-  const state = useAsync(() => usersApi.listUsers({ role: f.role, campus: f.campus, teamId: f.teamId, status: f.status, deleted }), [f]);
+  const organizersTab = f.tab === 'organizers';
+  // The organizers tab lists every Organizer account (active and inactive) so a mistaken promotion can be undone.
+  const role = organizersTab ? 'organizer' : f.role;
+  const state = useAsync(() => usersApi.listUsers({ role, campus: organizersTab ? '' : f.campus, teamId: organizersTab ? '' : f.teamId, status: f.status, deleted }), [f]);
   const [dlg, setDlg] = useState(null);
   const close = () => setDlg(null);
   const done = () => state.reload({ silent: true });
@@ -52,8 +56,9 @@ export default function Members() {
       render: (u) => (u.status === 'deleted' ? <Button small onClick={() => setDlg({ type: 'restore', u })}>{tr('استرجاع')}</Button> : (
         <div className="ia">
           <IconButton icon="edit" label={tr('تعديل')} onClick={() => setDlg({ type: 'edit', u })} />
-          <IconButton icon={u.status === 'active' ? 'user-off' : 'user-check'} label={u.status === 'active' ? tr('تعطيل') : tr('تفعيل')} onClick={() => setDlg({ type: 'toggle', u })} />
-          <IconButton icon="trash" label={tr('حذف ناعم')} onClick={() => setDlg({ type: 'delete', u })} />
+          {/* Your own account: no deactivate / delete, so you can never lock yourself out. */}
+          {u.id !== me.id && <IconButton icon={u.status === 'active' ? 'user-off' : 'user-check'} label={u.status === 'active' ? tr('تعطيل') : tr('تفعيل')} onClick={() => setDlg({ type: 'toggle', u })} />}
+          {u.id !== me.id && <IconButton icon="trash" label={tr('حذف ناعم')} onClick={() => setDlg({ type: 'delete', u })} />}
         </div>
       )),
     },
@@ -61,12 +66,12 @@ export default function Members() {
 
   return (
     <>
-      <PageHeader title={tr('الأعضاء')} subtitle={tr('إدارة المستخدمين، التعطيل، الحذف الناعم والاسترجاع')} crumb={tr('الأعضاء')} actions={<Button variant="primary" icon="user-plus" onClick={() => setDlg({ type: 'add' })}>{tr('إضافة مستخدم')}</Button>} />
-      <Segmented style={{ marginBottom: 10 }} value={f.tab} onChange={set('tab')} options={[['active', tr('القائمة')], ['deleted', tr('المحذوفون')]]} />
+      <PageHeader title={tr('الأعضاء')} subtitle={tr('إدارة المستخدمين، التعطيل، الحذف الناعم والاسترجاع')} crumb={tr('الأعضاء')} actions={<Button variant="primary" icon="user-plus" onClick={() => navigate('/organizer/registrations')}>{tr('طلبات الانضمام')}</Button>} />
+      <Segmented style={{ marginBottom: 10 }} value={f.tab} onChange={set('tab')} options={[['active', tr('القائمة')], ['organizers', tr('المنظّمون')], ['deleted', tr('المحذوفون')]]} />
       <FilterBar>
-        <Select label={tr('الحرم')} value={f.campus} onChange={set('campus')} options={[['', tr('كل الحرمين')], ['jenin', tr('جنين')], ['ramallah', tr('رام الله')]]} />
-        <Select label={tr('الفريق')} value={f.teamId} onChange={set('teamId')} options={teamOpts} />
-        <Select label={tr('الدور')} value={f.role} onChange={set('role')} options={[['', tr('كل الأدوار')], ['member', 'Member'], ['manager', 'Manager'], ['organizer', 'Organizer']]} />
+        {!organizersTab && <Select label={tr('الحرم')} value={f.campus} onChange={set('campus')} options={[['', tr('كل الحرمين')], ['jenin', tr('جنين')], ['ramallah', tr('رام الله')]]} />}
+        {!organizersTab && <Select label={tr('الفريق')} value={f.teamId} onChange={set('teamId')} options={teamOpts} />}
+        {!organizersTab && <Select label={tr('الدور')} value={f.role} onChange={set('role')} options={[['', tr('كل الأدوار')], ['member', 'Member'], ['manager', 'Manager'], ['organizer', 'Organizer']]} />}
         {!deleted && <Select label={tr('الحالة')} value={f.status} onChange={set('status')} options={[['', tr('كل الحالات')], ['active', tr('نشط')], ['disabled', tr('معطّل')]]} />}
       </FilterBar>
       <Card>
@@ -75,7 +80,6 @@ export default function Members() {
         </Async>
       </Card>
 
-      {dlg && dlg.type === 'add' && <UserDialog kind="user" onDone={done} onClose={close} />}
       {dlg && dlg.type === 'edit' && <UserDialog user={dlg.u} kind={dlg.u.role === 'manager' ? 'manager' : 'user'} onDone={done} onClose={close} />}
       {dlg && dlg.type === 'toggle' && (
         <ReasonDialog

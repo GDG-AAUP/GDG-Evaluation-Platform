@@ -7,10 +7,10 @@ test('mock backend: every page is available', () => {
 });
 
 test('real backend: pages without endpoints are "coming soon", working pages are not', () => {
-  for (const p of ['/ratings', '/activities', '/assistant', '/manager', '/manager/team/3', '/organizer', '/organizer/archive', '/organizer/policies', '/organizer/syslog']) {
+  for (const p of ['/organizer/news']) {
     assert.equal(isComingSoon(p, false), true, p);
   }
-  for (const p of ['/leaderboard', '/my-points', '/organizer/members', '/organizer/managers', '/organizer/campuses', '/organizer/audit', '/', '/login']) {
+  for (const p of ['/ratings', '/activities', '/organizer/awards', '/organizer/policies', '/organizer/syslog', '/organizer/points', '/assistant', '/manager', '/manager/team/3', '/organizer', '/organizer/archive', '/leaderboard', '/my-points', '/organizer/members', '/organizer/managers', '/organizer/campuses', '/organizer/audit', '/', '/login']) {
     assert.equal(isComingSoon(p, false), false, p);
   }
 });

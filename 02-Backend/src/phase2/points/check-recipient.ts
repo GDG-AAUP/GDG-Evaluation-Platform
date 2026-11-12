@@ -37,8 +37,9 @@ export async function checkPointRecipient(
     return 'not_found';
     }
 
+    // Members and Managers both take part in the monthly points rankings.
     if (
-    recipient.role !== 'member' ||
+    (recipient.role !== 'member' && recipient.role !== 'manager') ||
     recipient.isActive !== true ||
     recipient.deletedAt != null ||
     recipient.teamId == null

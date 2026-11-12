@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useToast } from '../../context/ToastContext.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
 import { usersApi } from '../../services/index.js';
+import { navigate } from '../../router/router.jsx';
 import UserDialog from '../../components/domain/UserDialog.jsx';
 import { CampusBadge, UserStatusBadge } from '../../components/ui/Badges.jsx';
 import DataTable from '../../components/ui/DataTable.jsx';
@@ -35,11 +36,10 @@ export default function Managers() {
 
   return (
     <>
-      <PageHeader title={tr('المديرون')} subtitle={tr('إدارة المديرين وتعيينهم على الفرق')} crumb={tr('المديرون')} actions={<Button variant="primary" icon="user-plus" onClick={() => setDlg({ type: 'add' })}>{tr('إضافة مدير')}</Button>} />
+      <PageHeader title={tr('المديرون')} subtitle={tr('إدارة المديرين وتعيينهم على الفرق')} crumb={tr('المديرون')} actions={<Button variant="primary" icon="user-plus" onClick={() => navigate('/organizer/registrations')}>{tr('طلبات الانضمام')}</Button>} />
       <Card>
         <Async state={state}>{(rows) => <DataTable columns={columns} rows={rows} searchText={(u) => `${u.name} ${u.email}`} />}</Async>
       </Card>
-      {dlg && dlg.type === 'add' && <UserDialog kind="manager" onDone={done} onClose={close} />}
       {dlg && dlg.type === 'edit' && <UserDialog user={dlg.u} kind="manager" onDone={done} onClose={close} />}
       {dlg && dlg.type === 'toggle' && (
         <ReasonDialog

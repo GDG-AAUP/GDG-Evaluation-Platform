@@ -3,10 +3,7 @@ const test = require('node:test')
 const assert = require('node:assert/strict')
 
 test('team and account validation reject privileged fields and non-boolean IDs', () => {
-  const user = require('../src/validators/create-user.validator')
   const team = require('../src/validators/create-team.validator')
-  assert.ok(user({ name: 'Test', email: 'test@example.test', role: 'member', teamId: 1, isActive: true }).error)
-  assert.ok(user({ name: 'Test', email: 'test@example.test', role: 'organizer', teamId: 1 }).error)
   assert.ok(team({ name: 'Test', campusId: '1' }).error)
   assert.ok(team({ name: 'Test', campusId: 1, managerId: 2 }).error)
   assert.equal(team({ name: ' Test ', campusId: 1 }).value.name, 'Test')
@@ -18,9 +15,7 @@ test('team and account validation reject privileged fields and non-boolean IDs',
   assert.equal(update({ name: ' Test ', email: 'NEW@EXAMPLE.TEST', reason: ' Test ' }).value.email, 'new@example.test')
   const parseId = require('../src/utils/parse-positive-id')
   assert.equal(parseId('2147483648'), null)
-  assert.ok(user({ name: 'Test', email: 'test@example.test', role: 'member', teamId: 2147483648 }).error)
   const longEmail = 'a'.repeat(60) + '@' + 'b'.repeat(50) + '.test'
-  assert.equal(user({ name: 'Test', email: longEmail, role: 'member', teamId: 1 }).value.email, longEmail)
   assert.equal(update({ email: longEmail, reason: 'Wider schema email' }).value.email, longEmail)
 })
 
@@ -590,7 +585,7 @@ test('PostgreSQL account, invitation and registration workflows', {
       assert.equal((await deleteOrRestore('DELETE', `/api/users/${userId}`, null)).status, 401)
       assert.equal((await deleteOrRestore('DELETE', `/api/users/${userId}`, 'clerk_invited')).status, 403)
       assert.equal((await deleteOrRestore('DELETE', `/api/users/${userId}`, 'clerk_org', { reason: 'Test', isActive: true })).status, 400)
-      assert.equal((await deleteOrRestore('DELETE', `/api/users/${actorId}`, 'clerk_org')).body.error.code, 'LAST_ACTIVE_ORGANIZER')
+      assert.equal((await deleteOrRestore('DELETE', `/api/users/${actorId}`, 'clerk_org')).body.error.code, 'SELF_LOCKOUT') // own account: refused before the last-organizer rule
       assert.equal((await deleteOrRestore('DELETE', `/api/users/${managerId}`, 'clerk_org')).body.error.code, 'MANAGER_REPLACEMENT_REQUIRED')
       assert.equal((await deleteOrRestore('DELETE', `/api/users/${userId}`, 'clerk_org')).status, 200)
       const deletedList = await deleteOrRestore('GET', '/api/users/deleted', 'clerk_org')

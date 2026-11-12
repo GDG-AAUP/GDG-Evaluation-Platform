@@ -24,6 +24,25 @@ export function createRankingsRouter(pool: Pool) {
 });
 
 
+// GET /api/rankings/months: closed months, oldest first, for the month selectors.
+router.get('/months', async (_req, res, next) => {
+  try {
+    const result = await pool.query(
+      `SELECT entity_id AS id
+       FROM audit_logs
+       WHERE action = 'MONTHLY_RANKINGS_PUBLISHED'
+         AND entity_name = 'monthly_rankings'
+       ORDER BY entity_id`
+    );
+
+    return res.status(200).json({
+      data: result.rows.map((row) => row.id)
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
 router.get('/archived', async (req, res, next) => {
   const validation = validateRankingQuery(req.query);
 

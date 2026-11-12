@@ -89,7 +89,7 @@ test('allows same user in Team and Campus', async () => {
   assert.equal(result.hasConflicts, false);
 });
 
-test('detects a member transferred between Teams', async () => {
+test('keeps one row per Team for a transferred member', async () => {
   const source = createSource({
     teams: [
       { id: 2, campusId: 1 },
@@ -105,9 +105,13 @@ test('detects a member transferred between Teams', async () => {
     source, 2026, 10
   );
 
-  assert.equal(result.hasConflicts, true);
-  assert.equal(result.conflicts.length, 1);
-  assert.equal(result.conflicts[0].userId, 5);
+  assert.equal(result.hasConflicts, false);
+  assert.deepEqual(
+    result.candidates
+      .filter((row) => row.rankingScope === 'Team')
+      .map((row) => [row.teamId, row.totalPoints]),
+    [[2, alice.totalPoints], [3, 20]]
+  );
 });
 
 test('preserves signed point totals and ranks', async () => {

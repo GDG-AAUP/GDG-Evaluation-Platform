@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { tr } from "../i18n/index.js";
 import { useAppData } from "../context/AppDataContext.jsx";
+import { useAuth } from "../context/AuthContext.jsx";
 import { useAsync } from "../hooks/useAsync.js";
 import { CAMPUS } from "../lib/constants.js";
 import { monthLabel } from "../lib/format.js";
 import { leaderboardApi } from "../services/index.js";
 import { Badge } from "../components/ui/Badges.jsx";
+import { Chips, FilterBar, Select } from "../components/ui/Form.jsx";
 import Icon from "../components/ui/Icon.jsx";
 import {
   Avatar,
@@ -52,7 +54,7 @@ function Podium({ rows }) {
   );
 }
 
-function Rows({ rows, q }) {
+function Rows({ rows, q, title }) {
   const mine = rows.find((person) => person.isMe);
   const search = q.trim().toLocaleLowerCase("ar");
 
@@ -66,7 +68,7 @@ function Rows({ rows, q }) {
     <>
       {mine && (
         <div className="mine">
-          <span>{tr("ترتيبك العام")}</span>
+          <span>{tr("ترتيبك")}</span>
           <span>{mine.rank}</span>
 
           <b dir="ltr">{tr("{n} نقطة", { n: Number(mine.total) })}</b>
@@ -78,7 +80,7 @@ function Rows({ rows, q }) {
       )}
 
       <h3>
-        {search ? tr("نتائج البحث") : tr("أفضل خمسة أعضاء في الفرعين")}
+        {search ? tr("نتائج البحث") : title}
       </h3>
 
       <Card className="lb" style={{ padding: 4 }}>
@@ -138,9 +140,13 @@ function Rows({ rows, q }) {
 
 export default function Leaderboard() {
   const { meta } = useAppData();
+  const { user } = useAuth() || {};
 
   const [selectedMonth, setSelectedMonth] = useState(null);
   const [search, setSearch] = useState("");
+  // One board at a time: a campus (Jenin and Ramallah are never combined) or one of its teams.
+  const [campus, setCampus] = useState(CAMPUS[user?.campus] ? user.campus : "jenin");
+  const [teamId, setTeamId] = useState("");
 
   const month = selectedMonth || meta?.curMonth;
 
@@ -149,13 +155,20 @@ export default function Leaderboard() {
       month
         ? leaderboardApi.getLeaderboard({
             month,
-            global: true,
+            campus,
+            teamId: teamId || undefined,
           })
         : Promise.resolve(null),
-    [month],
+    [month, campus, teamId],
   );
 
   if (!meta) return <Skeleton />;
+
+  const teams = meta.teams.filter((t) => t.campus === campus && t.status !== "deleted");
+  const team = teams.find((t) => t.id === teamId);
+  const boardTitle = team
+    ? tr("أفضل خمسة في فريق {team}", { team: tr(team.name) })
+    : tr("أفضل خمسة في حرم {campus}", { campus: tr(CAMPUS[campus]) });
 
   const months = meta.months;
   const monthIndex = months.findIndex(
@@ -209,8 +222,8 @@ export default function Leaderboard() {
   return (
     <>
       <PageHeader
-        title={tr("الترتيب العام")}
-        subtitle={tr("أفضل الأعضاء في جميع المجموعات والفرعين حسب مجموع النقاط")}
+        title={tr("الترتيب الشهري")}
+        subtitle={tr("ترتيب كل حرم وكل فريق على حدة حسب نقاط الشهر")}
         actions={picker}
       />
 
@@ -220,12 +233,26 @@ export default function Leaderboard() {
         </Banner>
       )}
 
+      <FilterBar>
+        <Chips
+          value={campus}
+          onChange={(v) => { setCampus(v); setTeamId(""); }}
+          options={Object.entries(CAMPUS).map(([v, l]) => [v, tr(l)])}
+        />
+        <Select
+          label={tr("الفريق")}
+          value={teamId}
+          onChange={setTeamId}
+          options={[["", tr("ترتيب الحرم كاملًا")], ...teams.map((t) => [t.id, tr(t.name)])]}
+        />
+      </FilterBar>
+
       <div className="tsearch">
         <Icon name="search" />
 
         <input
           type="search"
-          placeholder={tr("ابحث عن عضو من أي مجموعة أو فرع")}
+          placeholder={tr("ابحث عن اسم في هذا الترتيب")}
           aria-label={tr("ابحث عن عضو")}
           value={search}
           onChange={(event) => setSearch(event.target.value)}
@@ -243,11 +270,11 @@ export default function Leaderboard() {
           />
         }
       >
-        {(data) => <Rows rows={data.rows} q={search} />}
+        {(data) => <Rows rows={data.rows} q={search} title={boardTitle} />}
       </Async>
 
       <Note>
-        {tr("الترتيب حسب مجموع نقاط العضو خلال الشهر (النقاط المضافة ونقاط الأنشطة). من لديهم نفس عدد النقاط يحصلون على نفس الترتيب، وتُعرض أسماؤهم أبجديًا. تقييم الأداء لا يؤثر في الترتيب.")}
+        {tr("الترتيب حسب مجموع نقاط العضو خلال الشهر (النقاط المضافة ونقاط الأنشطة). من لديهم نفس عدد النقاط يحصلون على نفس الترتيب (1، 1، 2)، وتُعرض أسماؤهم أبجديًا. يظهر المدير مع أعضاء فريقه، ولكل حرم ترتيب مستقل. تقييم الأداء لا يؤثر في الترتيب.")}
       </Note>
     </>
   );

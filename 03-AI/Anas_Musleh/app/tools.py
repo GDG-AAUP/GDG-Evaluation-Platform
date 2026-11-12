@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import date, datetime
 
 from .backend_client import BackendClient
+from .config import APP_TZ
 from .errors import BackendError
 
 MONTH = {"type": "integer", "description": "Month number 1-12. Compute it from today's date for 'this month'/'last month'. "
@@ -31,7 +32,9 @@ TOOL_SPECS = [
      "description": "Total points the CURRENT manager/organizer awarded (as the actor) in a month.",
      "properties": {"month": MONTH, "year": YEAR}, "required": []},
     {"name": "get_leaderboard",
-     "description": "Monthly ranking (dense ranking, ties share a rank) of a team or a campus. Month-only points, never lifetime.",
+     "description": "Monthly ranking (dense ranking, ties share a rank) of a team or a campus. Month-only points, never lifetime. "
+                    "Includes managers. totalPoints = the whole team's/campus's points that month: use it for "
+                    "'how many points does my team have'.",
      "properties": {"scope": {"type": "string", "description": "'team' or 'campus'."},
                     "campus_name": CAMPUS, "team_name": TEAM, "month": MONTH, "year": YEAR,
                     "limit": {"type": "integer", "description": "Return only the first N rows (e.g. 3, 5)."}},
@@ -160,7 +163,8 @@ class ToolExecutor:
 
     @staticmethod
     def _date_of(iso: str) -> date:
-        return datetime.fromisoformat(iso.replace("Z", "+00:00")).date()
+        moment = datetime.fromisoformat(iso.replace("Z", "+00:00"))
+        return (moment.astimezone(APP_TZ) if moment.tzinfo else moment).date()
 
     # ------------------------------------------------------------ tools
     def t_get_my_profile(self):
@@ -176,6 +180,7 @@ class ToolExecutor:
     def t_get_my_points(self, month=None, year=None, start_date=None, end_date=None, limit=10):
         entries = self.client.my_points(self.token)
         raw_count = len(entries)
+        m, y = None, None
         if month is not None or year is not None:
             m, y = self._period(month, year)
             entries = [e for e in entries if (d := self._date_of(e["effectiveAt"])).year == y and (m is None or d.month == m)]
@@ -185,13 +190,14 @@ class ToolExecutor:
             entries = [e for e in entries if self._date_of(e["effectiveAt"]) <= date.fromisoformat(end_date)]
         limit = max(1, min(int(limit or 10), 50))
         notes = []
-        if raw_count >= 50:
-            notes.append("The backend returns only the latest 50 entries; older entries may be missing from this result.")
-        if entries and "reversesEntryId" not in entries[0]:
-            notes.append("The backend does not yet say whether an entry is a reversal or was reversed.")
-        if entries and "activityDescription" not in entries[0]:
-            notes.append("Activity descriptions are not provided by the backend yet.")
-        return {"totalPointsInPeriod": sum(e["points"] for e in entries), "entriesInPeriod": len(entries),
+        if start_date or end_date:
+            if raw_count >= 500:
+                notes.append("Only the latest 500 entries were searched; a date-range total may be incomplete.")
+            total, count = sum(e["points"] for e in entries), len(entries)
+        else:                                 # totals come from SQL over the whole ledger, never a page of rows
+            summary = self.client.my_points_summary(self.token, m, y)
+            total, count = summary["totalPoints"], summary["entriesCount"]
+        return {"totalPointsInPeriod": total, "entriesInPeriod": count,
                 "entries": entries[:limit], "notes": notes}
 
     def t_get_member_points(self, member_name, month=None, year=None):

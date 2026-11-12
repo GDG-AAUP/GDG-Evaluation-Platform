@@ -4,7 +4,7 @@ Base URL: `http://localhost:3001`. Business data is stored in PostgreSQL. Send J
 
 ## Authentication
 
-Send `Authorization: Bearer <Clerk session token>`. Clerk verifies identity; PostgreSQL supplies current project role, active state and deletion state. Client-supplied roles do not establish identity. Inactive/deleted accounts are blocked. API roles are lowercase; database roles are Organizer, Manager and Member.
+Send `Authorization: Bearer <Clerk session token>`. Accounts are not created by hand: a person signs up at Clerk, their first API call records a pending request (`403 REGISTRATION_PENDING`, or `403 REGISTRATION_REJECTED` after a rejection), and an organizer approves it. Clerk verifies identity; PostgreSQL supplies current project role, active state and deletion state. Client-supplied roles do not establish identity. Inactive/deleted accounts are blocked. API roles are lowercase; database roles are Organizer, Manager and Member.
 
 ## Endpoints
 
@@ -21,10 +21,14 @@ Send `Authorization: Bearer <Clerk session token>`. Clerk verifies identity; Pos
 | GET | `/api/teams/:id` | Active linked user | Team details |
 | GET | `/api/teams/:id/members` | Organizer or assigned Manager | Active members |
 | POST | `/api/teams` | Organizer | `name`, `campusId`, optional `description` |
+| PATCH | `/api/teams/:id` | Organizer | `name` and/or `managerId` (null removes), `reason`; one manager per team (409 `TEAM_MANAGER_EXISTS`), one team per manager; history + audit in one transaction |
 | PATCH | `/api/teams/:id/status` | Organizer | `isOperational` boolean |
 | PATCH | `/api/teams/:id/manager` | Organizer | `managerId`, `expectedManagerId`, `reason` |
 | GET | `/api/users` | Organizer | Users excluding deleted accounts |
-| POST | `/api/users` | Organizer | `name`, `email`, `role` (member/manager), `teamId` |
+| GET | `/api/registrations` | Organizer | Self-registration requests; `status` query `pending` (default), `approved` or `rejected` |
+| GET | `/api/registrations/count` | Organizer | `{ pending }` for the header badge |
+| POST | `/api/registrations/:id/approve` | Organizer | `role` (organizer/manager/member); `campusId` and `teamId` required for manager and member, no team for organizer. Creates the active account and emails the person |
+| POST | `/api/registrations/:id/reject` | Organizer | Optional `reason` (up to 1000 characters); emails the person |
 | PATCH | `/api/users/:id` | Organizer | Changed `name`, `email`, `role`, `teamId`, `isActive`; required `reason` |
 | PATCH | `/api/users/:id/status` | Organizer | `isActive` boolean |
 | POST | `/api/users/:id/invitations/review` | Organizer | `{}`; no email sent |
@@ -32,6 +36,34 @@ Send `Authorization: Bearer <Clerk session token>`. Clerk verifies identity; Pos
 | DELETE | `/api/users/:id` | Organizer | `reason` |
 | GET | `/api/users/deleted` | Organizer | Deleted users |
 | POST | `/api/users/:id/restore` | Organizer | `reason`; restores inactive account |
+| GET | `/api/rankings/options` | Public | Campuses and teams for filters |
+| GET | `/api/rankings/public-summary` | Public | `campusId`; current-month Top 3 and team leaders, without user IDs |
+| GET | `/api/rankings`, `/api/rankings/archived` | Active linked user | `scope`, `teamId` or `campusId`, `year`, `month`; Members and Managers, month-only totals, `DENSE_RANK`; one team or one campus per request (no combined board) |
+| GET | `/api/rankings/months` | Active linked user | Closed months, oldest first |
+| GET | `/api/points/me` | Active linked user | Optional `year`, `month`, `limit` (default 50, max 500) |
+| GET | `/api/points/me/summary` | Active linked user | Optional `year`, `month`; totals from SQL `SUM` |
+| GET | `/api/points/team-history` | Manager (team they manage) or Organizer (entries they recorded) | Optional `year`+`month` (default current), `limit` (max 500, default 200); entries with recipient, points, activity, reason, time, recorder, `awardedByMe`; month totals per person and for the team |
+| POST | `/api/points` | Organizer (any Member or Manager) or Manager (own team members) | `{userId, points (-100..100, ≠0), activityName, reason, activityDescription?}`; optional `Idempotency-Key` header (a retry returns the first entry, 200); an identical entry within 10 s is refused (409 `DUPLICATE_POINT_SUBMISSION`) |
+| POST | `/api/points/:entryId/reverse` | Organizer (any entry) or Manager (entries of their own team) | `{reason}`; at most once, `-points`, dated at the original instant (same month); audit `old_values` = original, `new_values` = reversal; a closed month is re-ranked |
+| GET | `/api/teams/:id/overview` | Organizer or assigned Manager | Manager dashboard |
+| GET | `/api/overview`, `/api/dashboard/ratings` | Organizer | Organizer overview |
+| GET | `/api/ratings/ledger` | Organizer | Optional `month`, `campus`, `teamId`, `kind`; newest 1000 point entries |
+| GET | `/api/activities` | Active linked user, scoped by role | Optional `month`; ledger-based activity overview |
+| POST | `/api/activities` | Organizer or team Manager | `{userId,label,points,description,month}`; 0 to 99 points, running month only |
+| GET | `/api/ratings/targets`, `/api/ratings/:userId` | Evaluators; self or evaluator | 15-item scorecards |
+| POST | `/api/ratings` | Organizer or team Manager | `{userId,month,scores,reason,expectedRev}`; each save is a new revision |
+| GET | `/api/awards` | Active linked user | Optional `campus`, `month`; team leaders and member of the month |
+| POST | `/api/awards` | Organizer | `{campus,month,userId}`; must be a current team leader |
+| GET | `/api/policies` | Active linked user | Current policy values |
+| PUT | `/api/policies`, `/api/policies/:key` | Organizer | `{key,value}` or `{value}`; audited |
+| GET | `/api/syslog` | Organizer | Optional `level`, `page`, `pageSize` |
+| GET | `/api/archive`, `/api/archive/:month` | Organizer or Manager | Month list, closed-month corrections and correctable people (Manager: own team); snapshot, optional `campus` or `teamId` |
+| POST | `/api/archive/close` | Organizer | Optional `{year, month}`; publishes a dense-ranked snapshot of an ended month |
+| POST | `/api/archive/corrections` | Organizer (any team) or Manager (own current team, never self) | `{month: 'YYYY-MM' (past), userId, value (-100..100, ≠0), reason}`; immutable compensating entry inside that month; a closed month's Team and Campus rankings are recomputed in the same transaction (`last_revised_at`, one `MONTHLY_RANKING_REVISED` audit row with before/after per changed row) |
+| POST | `/api/assistant` | Active linked user | `{question}`; proxied to the private chatbot service |
+| GET | `/api/assistant/data/*` | Active linked user, per-route rules | Read-only chatbot data |
+
+Month boundaries are always Asia/Hebron.
 
 Success returns `{ "data": ... }`; creation returns 201. Errors return `{ "error": { "code": "...", "message": "..." } }`. Numeric IDs must fit the positive PostgreSQL integer range.
 

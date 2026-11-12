@@ -44,11 +44,11 @@ export const getPolicies = (db) => ({ ...db.policies });
 
 /* ----------------------------------------------------------- leaderboard */
 
-export function leaderboard(db, actor, { month, campus, teamId, global } = {}) {
+/** One board: a team, or one campus (Jenin and Ramallah are never combined). */
+export function leaderboard(db, actor, { month, campus, teamId } = {}) {
   const m = month || db.curMonth;
   if (!db.months.some((x) => x.id === m)) throw E404('هذا الشهر غير موجود.');
-  if (global && !db.policies.globalLeaderboardEnabled) throw E403('الترتيب العام غير مفعّل حاليًا.');
-  const f = global ? {} : { campus, teamId };
+  const f = teamId ? { teamId } : { campus: campus || 'jenin' };
   const rows = rankRows(db, m, f).map((r) => rowView(db, r, actor));
   return { month: m, archived: !!db.snaps[m], rows };
 }
@@ -76,8 +76,8 @@ export function myPoints(db, actor, { month } = {}) {
 /** Members the actor may give points to (used by the dialog). */
 export function assignableMembers(db, actor) {
   requireRole(actor, 'organizer', 'manager');
-  let ms = db.users.filter((x) => x.role === 'member' && x.status === 'active');
-  if (actor.role === 'manager') ms = ms.filter((x) => x.teams.some((t) => actor.teams.includes(t)));
+  let ms = db.users.filter((x) => (x.role === 'member' || x.role === 'manager') && x.status === 'active' && x.id !== actor.id);
+  if (actor.role === 'manager') ms = ms.filter((x) => x.role === 'member' && x.teams.some((t) => actor.teams.includes(t)));
   return ms.map((x) => ({
     id: x.id, name: x.name, campus: x.campus, teams: [...x.teams], teamsLabel: teamsLabel(db, x),
     total: totalOf(db, x.id, db.curMonth),
@@ -88,8 +88,9 @@ export function addPoints(db, actor, { userId, value, reason }) {
   if (actor.role === 'member') throw E403();
   if (userId === actor.id) throw E403('لا يمكنك إضافة نقاط لنفسك.');
   const t = userById(db, userId);
-  if (!t || t.role !== 'member') throw E400('اختر عضوًا من القائمة.');
-  if (actor.role === 'manager' && !t.teams.some((x) => actor.teams.includes(x))) throw E403('هذا العضو ليس في فريقك.');
+  if (!t || (t.role !== 'member' && t.role !== 'manager')) throw E400('اختر عضوًا من القائمة.');
+  // Members and Managers receive points; a Manager awards only members of their own team.
+  if (actor.role === 'manager' && (t.role !== 'member' || !t.teams.some((x) => actor.teams.includes(x)))) throw E403('هذا العضو ليس في فريقك.');
   if (t.status !== 'active') throw E409('لا يمكن إضافة نقاط لحساب غير فعّال.');
   const val = parsePoints(value);
   if (Number.isNaN(val) || val === 0) throw E400('أدخل عددًا صحيحًا غير صفر، مثل 10 أو -5.');

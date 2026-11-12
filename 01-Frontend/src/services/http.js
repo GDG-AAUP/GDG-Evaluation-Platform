@@ -1,5 +1,5 @@
 import { API_URL } from '../config.js';
-import { createHttp } from './httpCore.js';
+import { createHttp, waitForToken } from './httpCore.js';
 import { notifyUnauthorized } from './session.js';
 
 // Real REST client (used when VITE_USE_MOCK=false). Conventions of the real backend
@@ -30,7 +30,7 @@ export function setAuthToken(token) {
 
 /** Current Bearer token: from the auth provider (Clerk) when registered, else sessionStorage. */
 export async function getAccessToken() {
-  if (provider) return provider.getToken();
+  if (provider) return waitForToken(provider.getToken);
   return getAuthToken();
 }
 

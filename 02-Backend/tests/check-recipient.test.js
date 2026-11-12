@@ -69,9 +69,21 @@ const scenarios = [
     expected: 'forbidden'
   },
   {
-    name: 'Non-member recipient is rejected',
+    name: 'Organizer recipient is rejected',
     actor: manager,
-    recipient: { ...validRecipient, role: 'manager' },
+    recipient: { ...validRecipient, role: 'organizer' },
+    expected: 'forbidden'
+  },
+  {
+    name: 'Organizer can award a Manager (managers take part in rankings)',
+    actor: organizer,
+    recipient: { ...validRecipient, role: 'manager', userId: 9, managerId: 9 },
+    expected: 'allowed'
+  },
+  {
+    name: "Manager cannot award another team's Manager",
+    actor: manager,
+    recipient: { ...validRecipient, role: 'manager', userId: 9, managerId: 9 },
     expected: 'forbidden'
   },
   {

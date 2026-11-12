@@ -35,7 +35,8 @@ export default function Assistant() {
       const { answer } = await assistantApi.askAssistant(q);
       setMsgs((m) => [...m, { r: 'b', t: answer }]);
     } catch (e) {
-      setMsgs((m) => [...m, { r: 'e', t: 'تعذّر الحصول على إجابة. جرّب مرة أخرى.', q }]);
+      // The server's reason (quota used up, AI busy, timeout...) in Arabic; the generic text only as a last resort.
+      setMsgs((m) => [...m, { r: 'e', t: (e && e.message) || 'تعذّر الحصول على إجابة. جرّب مرة أخرى.', q }]);
     } finally { setTyping(false); }
   };
 

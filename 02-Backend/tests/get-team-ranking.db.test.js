@@ -176,6 +176,7 @@ test('Monthly Team leaderboard calculates correctly in PostgreSQL', {
           rows.map(row => [row.userId, row])
         );
 
+        // Managers take part in the regular monthly points leaderboard.
         assert.equal(rows.length, 6);
 
         assert.deepEqual(
@@ -183,9 +184,9 @@ test('Monthly Team leaderboard calculates correctly in PostgreSQL', {
           [5, 6, 7, 8, 10, 11]
         );
 
+        assert.equal(byId.get(5).totalPoints, 20);
         assert.equal(byId.get(6).totalPoints, 30);
         assert.equal(byId.get(7).totalPoints, 30);
-        assert.equal(byId.get(5).totalPoints, 20);
         assert.equal(byId.get(8).totalPoints, 20);
         assert.equal(byId.get(10).totalPoints, 0);
         assert.equal(byId.get(11).totalPoints, -5);
@@ -194,7 +195,7 @@ test('Monthly Team leaderboard calculates correctly in PostgreSQL', {
     );
 
     await t.test(
-      'ties use dense ranks and managers are included',
+      'ties use dense ranks (1, 1, 2) and Managers rank alongside Members',
       async () => {
         const rows = await getTeamRanking(
           testPool, 2, 2026, 10

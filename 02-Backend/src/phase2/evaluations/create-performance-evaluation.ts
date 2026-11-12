@@ -144,7 +144,7 @@ export async function createPerformanceEvaluation(
           totalScore: calculatedTotal,
           comments: input.comments
         }),
-        input.activityName
+        `Manager evaluation: ${input.activityName} (${input.activityDate})`
       ]
     );
 

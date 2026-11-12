@@ -80,8 +80,9 @@ export function buildRows(db, month) {
     counts.set(entry.targetId, (counts.get(entry.targetId) || 0) + 1);
   }
 
+  // Managers appear in the regular monthly points rankings alongside members.
   return db.users
-    .filter((user) => user.role === "member" && user.status === "active")
+    .filter((user) => (user.role === "member" || user.role === "manager") && user.status === "active")
     .flatMap((user) =>
       user.teams
         .filter((teamId) =>
@@ -147,11 +148,12 @@ export function rankRows(db, month, filters = {}) {
   rows.forEach((row, index) => {
     const previous = rows[index - 1];
 
-    // Equal percentages receive the same rank.
-    row.rank =
-      previous && previous.total === row.total
+    // DENSE_RANK, like the backend: equal totals share a rank and the next total is +1 (1, 1, 2).
+    row.rank = !previous
+      ? 1
+      : previous.total === row.total
         ? previous.rank
-        : index + 1;
+        : previous.rank + 1;
 
     row.tie = rows.some(
       (other, otherIndex) =>

@@ -66,39 +66,57 @@ test('Public rankings work in the real Express app', {
     }
   });
 
-  await t.test('Visitors can load Team rankings', async () => {
+  await t.test('Visitors can load the public summary', async () => {
+    const campusId = campuses[0]?.id ?? 1;
+
+    const { response, body } = await request(
+      `/api/rankings/public-summary?campusId=${campusId}`
+    );
+
+    assert.equal(response.status, 200);
+    assert.ok(Array.isArray(body.data.top));
+    assert.ok(Array.isArray(body.data.teamLeaders));
+  });
+
+  await t.test('Public summary rejects an invalid campus', async () => {
+    const { response, body } = await request(
+      '/api/rankings/public-summary?campusId=abc'
+    );
+
+    assert.equal(response.status, 400);
+    assert.equal(body.error.code, 'INVALID_RANKING_QUERY');
+  });
+
+  await t.test('Full Team rankings require login', async () => {
     const teamId = teams[0]?.id ?? 1;
 
     const { response, body } = await request(
       `/api/rankings?scope=team&teamId=${teamId}&year=2026&month=10`
     );
 
-    assert.equal(response.status, 200);
-    assert.ok(Array.isArray(body.data));
+    assert.equal(response.status, 401);
+    assert.equal(body.error.code, 'UNAUTHENTICATED');
   });
 
-  await t.test('Visitors can load Campus rankings', async () => {
+  await t.test('Full Campus rankings require login', async () => {
     const campusId = campuses[0]?.id ?? 1;
 
     const { response, body } = await request(
       `/api/rankings?scope=campus&campusId=${campusId}&year=2026&month=10`
     );
 
-    assert.equal(response.status, 200);
-    assert.ok(Array.isArray(body.data));
+    assert.equal(response.status, 401);
+    assert.equal(body.error.code, 'UNAUTHENTICATED');
   });
 
-  await t.test('Invalid ranking queries return 400', async () => {
-    const { response, body } = await request(
-      '/api/rankings?scope=team&teamId=2&year=2026&month=15'
-    );
+  for (const path of ['/api/overview', '/api/archive', '/api/activities', '/api/teams/1/overview', '/api/assistant/data/audit-logs', '/api/policies', '/api/syslog', '/api/awards', '/api/ratings/targets']) {
+    await t.test(`${path} requires login`, async () => {
+      const { response, body } = await request(path);
 
-    assert.equal(response.status, 400);
-    assert.equal(
-      body.error.code,
-      'INVALID_RANKING_QUERY'
-    );
-  });
+      assert.equal(response.status, 401);
+      assert.equal(body.error.code, 'UNAUTHENTICATED');
+    });
+  }
 
   await t.test('Point history requires login', async () => {
     const { response, body } = await request(

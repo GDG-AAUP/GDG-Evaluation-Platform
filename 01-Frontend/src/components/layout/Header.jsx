@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useTheme } from '../../context/ThemeContext.jsx';
 import { DirectionToggle } from '../../context/DirectionContext.jsx';
@@ -11,6 +12,7 @@ import Logo from './Logo.jsx';
 import Popover from './Popover.jsx';
 import QuickLinks, { linksFor } from './QuickLinks.jsx';
 import { tr } from '../../i18n/index.js';
+import { registrationsApi } from '../../services/index.js';
 
 const NOTES = {
   member: ['افتح بطاقات التقييم لمراجعة تقييمك الشهري.', 'تابع نجوم الشهر من صفحة المجتمع.'],
@@ -18,10 +20,27 @@ const NOTES = {
   organizer: ['اختر عضو الشهر من صفحة نجوم الشهر.', 'انشر أخبار المجتمع من صفحة الأخبار.'],
 };
 
+// Organizers only: number of self-registration requests waiting for a decision.
+// Refreshed on load, every minute, and right after a decision on the requests screen.
+function usePendingRegistrations(role) {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    if (role !== 'organizer') return undefined;
+    let alive = true;
+    const load = () => registrationsApi.pendingCount().then((n) => { if (alive) setCount(n || 0); }).catch(() => {});
+    load();
+    const timer = setInterval(load, 60000);
+    window.addEventListener(registrationsApi.CHANGED_EVENT, load);
+    return () => { alive = false; clearInterval(timer); window.removeEventListener(registrationsApi.CHANGED_EVENT, load); };
+  }, [role]);
+  return count;
+}
+
 export default function Header() {
   const { user, logout } = useAuth();
   const { theme, toggle } = useTheme();
   const toast = useToast();
+  const pending = usePendingRegistrations(user.role);
 
   return (
     <header className="top">
@@ -49,10 +68,19 @@ export default function Header() {
       )}
 
       <Popover id="pn" trigger={(open, tg) => (
-        <button type="button" className="ib" onClick={tg} aria-label={tr('الإشعارات')} aria-expanded={open}><Icon name="bell" /></button>
+        <button type="button" className="ib" onClick={tg} aria-label={pending ? tr('الإشعارات: {n} طلبات انضمام معلقة', { n: pending }) : tr('الإشعارات')} aria-expanded={open}><Icon name="bell" />{pending > 0 && <span className="dot" />}</button>
       )}>
-        <div className="it" style={{ fontWeight: 500 }}>{tr('إرشادات المجتمع')}</div>
-        {NOTES[user.role].map((n) => <div key={n} className="it">{tr(n)}</div>)}
+        {(close) => (
+          <>
+            {pending > 0 && (
+              <Link to="/organizer/registrations" className="it" style={{ fontWeight: 500 }} onClick={close}>
+                {tr('طلبات الانضمام المعلقة: {n}', { n: pending })}
+              </Link>
+            )}
+            <div className="it" style={{ fontWeight: 500 }}>{tr('إرشادات المجتمع')}</div>
+            {NOTES[user.role].map((n) => <div key={n} className="it">{tr(n)}</div>)}
+          </>
+        )}
       </Popover>
 
       <Popover id="pu" trigger={(open, tg) => (

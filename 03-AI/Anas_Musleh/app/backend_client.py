@@ -19,8 +19,10 @@ class BackendClient(ABC):
     def get_team_members(self, token: str, team_id: int) -> list: ...
     @abstractmethod
     def my_points(self, token: str) -> list: ...
+    @abstractmethod
+    def my_points_summary(self, token: str, month: int | None, year: int | None) -> dict: ...
 
-    # ---- endpoints that DO NOT exist yet (agreed shape = our proposal) -----------
+    # ---- read-only chatbot data endpoints (GET /api/assistant/data/*) ------------
     @abstractmethod
     def member_points(self, token: str, member_name: str, month=None, year=None) -> dict: ...
     @abstractmethod
@@ -43,14 +45,15 @@ class BackendClient(ABC):
 
 
 class RealBackendClient(BackendClient):
-    """Talks to the Node/Express backend (02-Backend). Only the existing endpoints work."""
+    """Talks to the Node/Express backend (02-Backend), always as the signed-in user."""
 
     def __init__(self, base_url: str, timeout: float = 10.0):
         self.http = httpx.Client(base_url=base_url, timeout=timeout)
 
     def _get(self, token: str, path: str, params: dict | None = None):
         try:
-            r = self.http.get(path, params=params, headers={"Authorization": f"Bearer {token}"})
+            clean = {k: v for k, v in (params or {}).items() if v is not None}
+            r = self.http.get(path, params=clean, headers={"Authorization": f"Bearer {token}"})
         except httpx.HTTPError as exc:                        # server down, timeout...
             raise BackendError("BACKEND_UNREACHABLE", f"Backend unreachable: {exc}", 503)
         body = r.json() if r.headers.get("content-type", "").startswith("application/json") else {}
@@ -59,27 +62,43 @@ class RealBackendClient(BackendClient):
             raise BackendError(err.get("code", "BACKEND_ERROR"), err.get("message", "Backend error"), r.status_code)
         return body.get("data")
 
-    @staticmethod
-    def _not_yet(name: str):
-        raise BackendError("NOT_IMPLEMENTED", f"'{name}' is not available in the backend yet.", 501)
-
-    # existing endpoints
     def me(self, token): return self._get(token, "/api/auth/me")
     def list_campuses(self, token): return self._get(token, "/api/campuses")
     def list_teams(self, token, campus_id=None):
         return self._get(token, "/api/teams", {"campusId": campus_id} if campus_id else None)
     def get_team_members(self, token, team_id): return self._get(token, f"/api/teams/{team_id}/members")
-    def my_points(self, token): return self._get(token, "/api/points/me")   # last 50 entries, no filters
+    def my_points(self, token): return self._get(token, "/api/points/me", {"limit": 500})
 
-    # not built yet -> honest error, the chatbot will tell the user "not available yet"
-    def member_points(self, token, member_name, month=None, year=None): self._not_yet("member_points")
-    def points_awarded_by_me(self, token, month, year): self._not_yet("points_awarded_by_me")
-    def leaderboard(self, token, scope, campus_id, team_id, month, year, limit): self._not_yet("leaderboard")
-    def my_ranking(self, token, scope, month, year): self._not_yet("my_ranking")
-    def my_evaluations(self, token, month, year, limit): self._not_yet("my_evaluations")
-    def team_activity_summary(self, token, team_id, month, year, activity_keyword): self._not_yet("team_activity_summary")
-    def manager_evaluations(self, token, campus_id, month, year, manager_name): self._not_yet("manager_evaluations")
-    def audit_logs(self, token, limit): self._not_yet("audit_logs")
+    def _data(self, token, name, **params): return self._get(token, f"/api/assistant/data/{name}", params)
+
+    def my_points_summary(self, token, month, year):
+        return self._data(token, "my-points-summary", month=month, year=year)
+
+    def member_points(self, token, member_name, month=None, year=None):
+        return self._data(token, "member-points", memberName=member_name, month=month, year=year)
+
+    def points_awarded_by_me(self, token, month, year):
+        return self._data(token, "points-awarded", month=month, year=year)
+
+    def leaderboard(self, token, scope, campus_id, team_id, month, year, limit):
+        # A team board is identified by the team alone; the backend rejects sending both IDs ambiguously.
+        return self._data(token, "leaderboard", scope=scope, campusId=None if scope == "team" else campus_id,
+                          teamId=team_id, month=month, year=year, limit=limit)
+
+    def my_ranking(self, token, scope, month, year):
+        return self._data(token, "my-ranking", scope=scope, month=month, year=year)
+
+    def my_evaluations(self, token, month, year, limit):
+        return self._data(token, "my-evaluations", month=month, year=year, limit=limit)
+
+    def team_activity_summary(self, token, team_id, month, year, activity_keyword):
+        return self._data(token, "team-activity", teamId=team_id, month=month, year=year, activity=activity_keyword)
+
+    def manager_evaluations(self, token, campus_id, month, year, manager_name):
+        return self._data(token, "manager-evaluations", campusId=campus_id, month=month, year=year,
+                          managerName=manager_name)
+
+    def audit_logs(self, token, limit): return self._data(token, "audit-logs", limit=limit)
 
 
 def get_client() -> BackendClient:

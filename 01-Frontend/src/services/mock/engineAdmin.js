@@ -302,10 +302,12 @@ export function snapshot(db, actor, { month, campus, teamId }) {
 }
 
 export function addCorrection(db, actor, { month, userId, value, reason }) {
-  requireRole(actor, 'organizer');
+  requireRole(actor, 'organizer', 'manager');
   if (!db.snaps[month]) throw E400('اختر شهرًا مؤرشفًا.');
   const u = userById(db, userId);
-  if (!u || u.role !== 'member' || u.status === 'deleted') throw E400('اختر عضوًا من القائمة.');
+  if (!u || !['member', 'manager'].includes(u.role) || u.status === 'deleted') throw E400('اختر عضوًا من القائمة.');
+  if (u.id === actor.id) throw E403('لا يمكنك تصحيح نقاطك.');
+  if (actor.role === 'manager' && !u.teams.some((t) => actor.teams.includes(t))) throw E403('يمكنك تصحيح أعضاء فريقك فقط.');
   const v = parsePoints(value);
   if (Number.isNaN(v) || v === 0) throw E400('أدخل عددًا صحيحًا غير صفر.');
   const max = db.policies.maxPointsPerOperation;

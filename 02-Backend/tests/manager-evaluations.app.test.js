@@ -105,6 +105,11 @@ test('Manager Evaluation authorization in the full Express app', {
     const statement =
       typeof sql === 'string' ? sql : sql.text || '';
 
+    // No self-registration requests exist in this fake database.
+    if (statement.includes('registration_requests')) {
+      return { rows: [] };
+    }
+
     if (statement.includes('LEFT JOIN performance_evaluations e')) {
       return {
         rows: [{
@@ -281,7 +286,8 @@ test('Manager Evaluation authorization in the full Express app', {
   await t.test('unlinked account is denied', async () => {
     const result = await get('clerk_unknown');
 
-    assert.equal(result.status, 403);
+    assert.equal(result.status, 401);
+    assert.equal(result.json.error.code, 'USER_NOT_FOUND_IN_DB');
   });
 
   await t.test('client role spoofing does not grant access', async () => {

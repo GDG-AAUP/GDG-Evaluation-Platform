@@ -13,3 +13,4 @@ export * as assistantApi from './assistant.js';
 export * as devApi from './dev.js';
 export { ApiError } from './errors.js';
 export { setUnauthorizedHandler } from './session.js';
+export * as registrationsApi from './registrations.js';

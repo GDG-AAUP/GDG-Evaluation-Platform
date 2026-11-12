@@ -43,37 +43,36 @@ test('allows the same user in Team and Campus rankings', () => {
   assert.deepEqual(findSnapshotConflicts(rows), []);
 });
 
-test('detects a user ranked in two Teams in one month', () => {
+test('allows a transferred user in two Teams in one month', () => {
   const rows = [
     base,
     { ...base, teamId: 3, totalPoints: 20 }
   ];
 
-  const conflicts = findSnapshotConflicts(rows);
+  assert.deepEqual(findSnapshotConflicts(rows), []);
+});
 
-  assert.equal(conflicts.length, 1);
-  assert.equal(conflicts[0].userId, 5);
-  assert.equal(conflicts[0].rankingScope, 'Team');
-  assert.equal(conflicts[0].month, 10);
-  assert.equal(conflicts[0].year, 2026);
-  assert.deepEqual(conflicts[0].rows, rows);
+test('allows a transferred user in two Campuses in one month', () => {
+  const rows = [
+    { ...base, rankingScope: 'Campus', teamId: null },
+    { ...base, rankingScope: 'Campus', teamId: null, campusId: 2 }
+  ];
+
+  assert.deepEqual(findSnapshotConflicts(rows), []);
 });
 
 test('detects duplicate Campus snapshots for one user', () => {
   const rows = [
     { ...base, rankingScope: 'Campus', teamId: null },
-    {
-      ...base,
-      rankingScope: 'Campus',
-      teamId: null,
-      campusId: 2
-    }
+    { ...base, rankingScope: 'Campus', teamId: null }
   ];
 
   const conflicts = findSnapshotConflicts(rows);
 
   assert.equal(conflicts.length, 1);
   assert.equal(conflicts[0].rankingScope, 'Campus');
+  assert.equal(conflicts[0].month, 10);
+  assert.equal(conflicts[0].year, 2026);
   assert.equal(conflicts[0].rows.length, 2);
 });
 
@@ -98,9 +97,9 @@ test('allows the same user in different years', () => {
 test('detects multiple independent conflicts', () => {
   const rows = [
     base,
-    { ...base, teamId: 3 },
+    { ...base },
     { ...base, userId: 8 },
-    { ...base, userId: 8, teamId: 4 }
+    { ...base, userId: 8 }
   ];
 
   const conflicts = findSnapshotConflicts(rows);

@@ -8,6 +8,8 @@ const requireRole = require('../middleware/require-role')
 const validateCreateTeam = require('../validators/create-team.validator')
 const validateReplaceManager = require('../validators/replace-manager.validator')
 const { replaceTeamManager } = require('../repositories/team-manager.repository')
+const validateUpdateTeam = require('../validators/update-team.validator')
+const { updateTeam } = require('../repositories/team-update.repository')
 
 const router = express.Router()
 
@@ -148,6 +150,37 @@ router.patch('/:id/manager', requireRole('organizer'), async (req, res) => {
     return res.status(failure[0]).json({ error: { code: failure[1], message: failure[2] } })
   }
   return res.status(200).json({ data: result.data })
+})
+
+// Renames a team and/or assigns (managerId) or removes (null) its single current manager.
+router.patch('/:id', requireRole('organizer'), async (req, res) => {
+  const teamId = parsePositiveId(req.params.id)
+  if (teamId === null || teamId > 2147483647) {
+    return res.status(400).json({
+      error: { code: 'INVALID_TEAM_ID', message: 'Team ID must be a positive integer' },
+    })
+  }
+  const validation = validateUpdateTeam(req.body)
+  if (validation.error) {
+    return res.status(400).json({ error: { code: 'INVALID_TEAM_DATA', message: validation.error } })
+  }
+  const result = await updateTeam(teamId, validation.value, req.projectUser.id)
+  const failures = {
+    actor_forbidden: [403, 'FORBIDDEN', 'An active organizer account is required'],
+    team_not_found: [404, 'TEAM_NOT_FOUND', 'Team not found'],
+    team_exists: [409, 'TEAM_ALREADY_EXISTS', 'A team with this name already exists in this campus'],
+    manager_exists: [409, 'TEAM_MANAGER_EXISTS', 'This team already has a current manager; remove that manager first'],
+    invalid_manager: [409, 'INVALID_TEAM_MANAGER', 'Choose an active, non-deleted account with the Manager role'],
+    manager_replacement_required: [409, 'MANAGER_REPLACEMENT_REQUIRED', 'This manager runs an operational team; deactivate it or give it another manager first'],
+    operational_team_needs_manager: [409, 'OPERATIONAL_TEAM_NEEDS_MANAGER', 'An operational team must keep its manager; deactivate the team first'],
+    history_conflict: [409, 'ASSIGNMENT_HISTORY_CONFLICT', 'Current assignment history must be reconciled before changing the manager'],
+  }
+  if (result.outcome !== 'updated') {
+    const failure = failures[result.outcome]
+    if (!failure) throw new Error('Unexpected team update outcome')
+    return res.status(failure[0]).json({ error: { code: failure[1], message: failure[2] } })
+  }
+  return res.status(200).json({ data: result.team, changed: result.changed })
 })
 
 // Updates team operational status without changing account status or assignments.
