@@ -12,6 +12,7 @@ manager: [
   LB,
   { to: "/manager", icon: "users", label: "فريقي" },
   { to: "/my-points", icon: "star", label: "تقييمي العام" },
+  { to: "/manager/archive", icon: "archive", label: "تصحيح الأشهر المغلقة" },
   BOT,
 ],
   organizer: [
@@ -19,6 +20,7 @@ manager: [
     { to: "/organizer/campuses", icon: "building", label: "الحرمان والفرق" },
     { to: "/organizer/members", icon: "users", label: "الأعضاء" },
     { to: "/organizer/managers", icon: "manager", label: "المديرون" },
+    { to: "/organizer/registrations", icon: "user-plus", label: "طلبات الانضمام" },
     { to: "/organizer/points", icon: "star", label: "سجل النقاط القديم" },
   
     { to: "/organizer/archive", icon: "archive", label: "الأرشيف الشهري" },

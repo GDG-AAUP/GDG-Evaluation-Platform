@@ -8,6 +8,12 @@ For a new empty database, execute:
 2. `migrations/002_user_invitations.sql`.
 3. `migrations/003_user_soft_delete.sql`.
 4. `migrations/004_final_backend_schema.sql`.
+5. `migrations/005_manager_evaluation_four_criteria.sql` (required: the API sends four criteria).
+6. `migrations/006_asia_hebron_timestamps.sql`.
+7. `migrations/007_snapshot_rows_per_team_and_campus.sql`.
+8. `migrations/008_enable_remaining_modules.sql`.
+
+`setup-new-database.sql` runs all eight in this order. Month boundaries are always Asia/Hebron.
 
 For an existing initialized database, apply only unapplied migrations. Migration 004 upgrades the historical schema, archives the old evaluation table, and retains existing account data. Do not run a clean-install schema over existing tables. The base schema and migration 002 are not repeatable; migrations 003 and 004 are repeatable. On an error, roll back and inspect the conflict instead of deleting data.
 

@@ -26,7 +26,8 @@ test('login: success, wrong password, disabled account', () => {
 test('points: reason mandatory, no self points, limit, zero, team scope', () => {
   const { db, u, mgr, org } = setup();
   throwsStatus(() => E.addPoints(db, mgr, { userId: 'u2', value: 10, reason: '  ' }), 400);
-  throwsStatus(() => E.addPoints(db, mgr, { userId: 'u2', value: 51, reason: 'x' }), 400);
+  throwsStatus(() => E.addPoints(db, mgr, { userId: 'u2', value: 101, reason: 'x' }), 400);
+  throwsStatus(() => E.addPoints(db, mgr, { userId: 'u2', value: -101, reason: 'x' }), 400);
   throwsStatus(() => E.addPoints(db, mgr, { userId: 'u2', value: 0, reason: 'x' }), 400);
   throwsStatus(() => E.addPoints(db, mgr, { userId: 'm1', value: 5, reason: 'x' }), 403);
   throwsStatus(() => E.addPoints(db, org, { userId: 'o1', value: 5, reason: 'x' }), 403);
@@ -119,12 +120,37 @@ test('manager: scope, policy for editing, cannot create non-members', () => {
   throwsStatus(() => A.setPolicy(db, mgr, { key: 'maxPointsPerOperation', value: 5 }), 403);
 });
 
+test('rankings use DENSE_RANK (1, 1, 2) and include managers', () => {
+  const { db, org, u } = setup();
+  const jenin = rankRows(db, db.curMonth, { campus: 'jenin' });
+  for (let i = 1; i < jenin.length; i += 1) {
+    const step = jenin[i].rank - jenin[i - 1].rank;
+    assert.ok(step === 0 || step === 1, 'ranks never skip');
+    assert.equal(step === 0, jenin[i].total === jenin[i - 1].total);
+  }
+  assert.ok(jenin.some((r) => u(r.userId).role === 'manager'), 'managers are on the board');
+  assert.ok(E.addPoints(db, org, { userId: 'm1', value: 5, reason: 'x' }), 'organizer awards a manager');
+});
+
+test('late correction: manager for own team only, never self', () => {
+  const { db, org, mgr } = setup();
+  A.closeMonth(db, org);
+  const month = Object.keys(db.snaps).sort().at(-1);
+  const own = db.users.find((x) => x.role === 'member' && x.teams.some((t) => mgr.teams.includes(t)));
+  const other = db.users.find((x) => x.role === 'member' && !x.teams.some((t) => mgr.teams.includes(t)));
+  assert.ok(A.addCorrection(db, mgr, { month, userId: own.id, value: 5, reason: 'x' }).id);
+  throwsStatus(() => A.addCorrection(db, mgr, { month, userId: other.id, value: 5, reason: 'x' }), 403);
+  throwsStatus(() => A.addCorrection(db, mgr, { month, userId: mgr.id, value: 5, reason: 'x' }), 403);
+  throwsStatus(() => A.addCorrection(db, mgr, { month, userId: own.id, value: 5, reason: ' ' }), 400);
+});
+
 test('policies change behaviour live', () => {
   const { db, org, mgr } = setup();
   A.setPolicy(db, org, { key: 'maxPointsPerOperation', value: 5 });
   throwsStatus(() => E.addPoints(db, mgr, { userId: 'u2', value: 6, reason: 'x' }), 400);
-  A.setPolicy(db, org, { key: 'globalLeaderboardEnabled', value: false });
-  throwsStatus(() => E.leaderboard(db, org, { global: true }), 403);
+  // No combined board: each call ranks one campus (or one team) only.
+  const jenin = E.leaderboard(db, org, { campus: 'jenin' }).rows;
+  assert.ok(jenin.length > 0 && jenin.every((r) => r.campus === 'jenin'));
   throwsStatus(() => A.setPolicy(db, org, { key: 'maxPointsPerOperation', value: 0 }), 400);
   A.setPolicy(db, org, { key: 'managerCanEditOrMoveMembers', value: true });
   const r = A.updateUser(db, mgr, { id: 'u2', name: 'اسم جديد', email: 'u2@gdg.ps', campus: 'jenin', role: 'member', teams: ['jenin-technical'] });

@@ -62,7 +62,7 @@ test('PostgreSQL point reversals are atomic and cannot repeat', {
     transactionStarted = true
 
     for (const table of [
-      'campuses', 'users', 'teams', 'point_entries', 'audit_logs'
+      'campuses', 'users', 'teams', 'assignment_history', 'point_entries', 'audit_logs'
     ]) {
       await client.query(
         `CREATE TEMP TABLE ${table} (LIKE public.${table} INCLUDING ALL)`
@@ -90,6 +90,12 @@ test('PostgreSQL point reversals are atomic and cannot repeat', {
       ) VALUES
         (2, 1, 'Team A', 5, TRUE),
         (3, 1, 'Team B', 9, TRUE)
+    `)
+    // A reversal is scoped by the team the person belonged to when the original took effect.
+    await client.query(`
+      INSERT INTO assignment_history (user_id, team_id, role_at_time, effective_from) VALUES
+        (5, 2, 'Manager', '2026-01-01'), (7, 2, 'Member', '2026-01-01'),
+        (9, 3, 'Manager', '2026-01-01'), (12, 3, 'Member', '2026-01-01')
     `)
 
     const firstId = await insertOriginal(7, 5, 20)
@@ -120,7 +126,7 @@ test('PostgreSQL point reversals are atomic and cannot repeat', {
       assert.equal(reversal.rows[0].original_id, firstId)
 
       const audit = await client.query(
-        `SELECT action, actor_user_id, entity_id, new_values
+        `SELECT action, actor_user_id, entity_id, old_values, new_values
          FROM audit_logs
          WHERE entity_name = 'point_entries' AND entity_id = $1`,
         [firstReversalId]
@@ -129,6 +135,15 @@ test('PostgreSQL point reversals are atomic and cannot repeat', {
       assert.equal(audit.rows[0].action, 'reverse_point_entry')
       assert.equal(audit.rows[0].actor_user_id, 5)
       assert.equal(audit.rows[0].new_values.reversesEntryId, firstId)
+      assert.equal(audit.rows[0].old_values.id, firstId, 'old_values holds the original entry')
+      assert.equal(audit.rows[0].old_values.points, 20)
+
+      const dates = await client.query(
+        `SELECT o.effective_at = r.effective_at AS same FROM point_entries o
+         JOIN point_entries r ON r.reverses_entry_id = o.entry_id WHERE o.entry_id = $1`,
+        [firstId]
+      )
+      assert.equal(dates.rows[0].same, true, "the reversal lands in the original entry's month")
     })
 
     await t.test('a second reversal is rejected with no extra writes', async () => {
@@ -158,6 +173,10 @@ test('PostgreSQL point reversals are atomic and cannot repeat', {
       )
       assert.equal(result.outcome, 'forbidden')
       assert.equal(await count('point_entries'), before)
+    })
+
+    await t.test('organizer reverses globally even after the person was deactivated', async () => {
+      await client.query('UPDATE users SET is_active = FALSE WHERE user_id = 12')
     })
 
     await t.test('organizer can reverse across teams and negate negatives', async () => {

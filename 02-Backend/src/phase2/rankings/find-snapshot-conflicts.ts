@@ -24,7 +24,8 @@ export function findSnapshotConflicts(
   const groups = new Map<string, SnapshotCandidate[]>();
 
   for (const row of rows) {
-    const key = `${row.userId}-${row.rankingScope}-${row.year}-${row.month}`;
+    // Transfers legitimately give one row per team or campus; only exact duplicates conflict.
+    const key = `${row.userId}-${row.rankingScope}-${row.campusId}-${row.teamId}-${row.year}-${row.month}`;
 
     const existing = groups.get(key);
 

@@ -163,7 +163,11 @@ class MockBackend(BackendClient):
                  "activityDescription": p["activityDescription"], "reversesEntryId": p["reversesEntryId"]}
                 for p in rows]
 
-    # ---------------- PLANNED endpoints ------------------------------------------
+    def my_points_summary(self, token, month, year):
+        pts = self._points_of(self._actor(token)["id"], month, year)
+        return {"month": month, "year": year, "totalPoints": sum(p["points"] for p in pts), "entriesCount": len(pts)}
+
+    # ---------------- chatbot data endpoints --------------------------------------
     def member_points(self, token, member_name, month=None, year=None):
         a = self._actor(token)
         if a["role"] == "member":
@@ -207,10 +211,12 @@ class MockBackend(BackendClient):
         if scope == "team" and not team_id:
             raise BackendError("INVALID_REQUEST", "team_id is required for scope=team", 400)
         rows, has_data = self._board(scope, campus_id, team_id, month, year)
+        total, participants = sum(r["totalPoints"] for r in rows), len(rows)   # like the real endpoint
         if limit:
             rows = rows[:limit]
         return {"scope": scope, "campusId": campus_id, "teamId": team_id, "month": month, "year": year,
-                "hasData": has_data, "entries": rows if has_data else []}
+                "hasData": has_data, "totalPoints": total, "participants": participants,
+                "entries": rows if has_data else []}
 
     def my_ranking(self, token, scope, month, year):
         a = self._actor(token)

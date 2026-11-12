@@ -32,7 +32,8 @@ const originalEntry = {
   points: 20,
   activityName: 'Workshop',
   activityDescription: null,
-  reversesEntryId: null
+  reversesEntryId: null,
+  effectiveAt: '2026-10-05T09:00:00.000Z'
 }
 
 const reversalPath = '/api/points/42/reverse'
@@ -116,6 +117,11 @@ function createMockPool({
           const statement = sql.trim()
           queries.push({ sql: statement, params })
 
+          // The recipient's team when the original entry took effect (reversals).
+          if (/FROM\s+assignment_history\b/i.test(statement)) {
+            return { rows: recipient ? [{ teamId: recipient.teamId, campusId: 1, managerId: recipient.managerId }] : [] }
+          }
+
           // Recipient lookup must precede the general actor lookup.
           if (/FROM\s+users\s+u\b/i.test(statement)) {
             return { rows: recipient ? [recipient] : [] }
@@ -125,7 +131,9 @@ function createMockPool({
             return { rows: dbActor ? [dbActor] : [] }
           }
 
-          if (/FROM\s+point_entries\b/i.test(statement)) {
+          if (/FROM\s+point_entries\b/i.test(statement) && !/^INSERT/i.test(statement)) {
+            // Short-window duplicate guard: no identical recent entry in these tests.
+            if (/created_at\s*>/i.test(statement)) return { rows: [] }
             if (/WHERE\s+reverses_entry_id\s*=\s*\$1/i.test(statement)) {
               return { rows: existingReversal ? [existingReversal] : [] }
             }
@@ -413,8 +421,9 @@ test('Reversal lets a manager reverse points with an audit record', async (t) =>
   ])
   assert.equal(auditInsert.params[0], 5)
   assert.equal(auditInsert.params[1], '43')
-  assert.equal(JSON.parse(auditInsert.params[2]).reversesEntryId, '42')
-  assert.equal(auditInsert.params[3], 'Awarded by mistake')
+  assert.equal(JSON.parse(auditInsert.params[2]).id, '42', 'old_values = the original entry')
+  assert.equal(JSON.parse(auditInsert.params[3]).reversesEntryId, '42', 'new_values = the reversal')
+  assert.equal(auditInsert.params[4], 'Awarded by mistake')
 
   const statements = mock.queries.map(q => q.sql)
   const insertPosition = statements.findIndex(s => /INSERT\s+INTO\s+point_entries/i.test(s))
@@ -478,11 +487,11 @@ test('Reversal returns 404 if the original entry is missing', async (t) => {
   assert.equal(mock.releaseCount(), 1)
 })
 
-test('Reversal returns 404 if the recipient is missing', async (t) => {
+test('Reversal returns 403 when the entry was not from the manager\'s team', async (t) => {
   const mock = createMockPool({ recipient: null })
   const { response, data } = await sendPost(t, mock, manager, reversalPath, reversalBody)
-  assert.equal(response.status, 404)
-  assert.equal(data.error.code, 'RECIPIENT_NOT_FOUND')
+  assert.equal(response.status, 403)
+  assert.equal(data.error.code, 'FORBIDDEN')
   assert.equal(mock.queries.some(q => /\bINSERT\b/i.test(q.sql)), false)
   assert.ok(mock.queries.some(q => q.sql === 'ROLLBACK'))
   assert.equal(mock.releaseCount(), 1)

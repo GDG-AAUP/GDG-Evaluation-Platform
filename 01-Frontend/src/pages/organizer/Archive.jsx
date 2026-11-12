@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAppData } from '../../context/AppDataContext.jsx';
+import { useAuth } from '../../context/AuthContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { useAsync } from '../../hooks/useAsync.js';
 import { CAMPUS } from '../../lib/constants.js';
@@ -17,23 +18,26 @@ function CorrectionDialog({ archived, members, onDone, onClose }) {
   const toast = useToast();
   const [f, setF] = useState({ month: archived.length ? archived[archived.length - 1].id : '', userId: members[0] ? members[0].id : '', value: '', reason: '' });
   const [err, setErr] = useState('');
+  const [busy, setBusy] = useState(false);
   const set = (k) => (v) => { setF((s) => ({ ...s, [k]: v })); setErr(''); };
   const save = async () => {
+    if (!String(f.reason).trim()) { setErr(tr('سبب التصحيح إلزامي.')); return; }
+    setBusy(true);
     try {
-      await archiveApi.addCorrection({ ...f, value: parsePoints(f.value) });
-      toast.success(tr('تم تسجيل التصحيح'));
+      const res = await archiveApi.addCorrection({ ...f, value: parsePoints(f.value) });
+      toast.success(res && res.closed ? tr('تم تسجيل التصحيح وإعادة احتساب ترتيب الشهر') : tr('تم تسجيل التصحيح'));
       onDone(); onClose();
-    } catch (e) { setErr(e.message); }
+    } catch (e) { setErr(e.message); setBusy(false); }
   };
   return (
     <Dialog title={tr('تصحيح متأخر')} onClose={onClose}>
       <Field label={tr('الشهر المؤرشف')}>{(id) => <Select id={id} value={f.month} onChange={set('month')} options={archived.map((m) => [m.id, monthLabel(m.id)])} />}</Field>
-      <Field label={tr('العضو')}>{(id) => <Select id={id} value={f.userId} onChange={set('userId')} options={members.map((u) => [u.id, `${u.name} — ${tr(CAMPUS[u.campus])}`])} />}</Field>
+      <Field label={tr('العضو أو المدير')}>{(id) => <Select id={id} value={f.userId} onChange={set('userId')} options={members.map((u) => [u.id, `${u.name}${u.role === 'manager' ? ` (${tr('مدير')})` : ''} — ${tr(CAMPUS[u.campus])}`])} />}</Field>
       <Field label={tr('النقاط')}>{(id) => <input id={id} type="text" dir="ltr" style={{ textAlign: 'start' }} inputMode="numeric" placeholder={tr('مثال: 5 أو -5')} value={f.value} onChange={(e) => set('value')(e.target.value)} />}</Field>
       <Field label={tr('السبب (إلزامي)')}>{(id) => <textarea id={id} value={f.reason} onChange={(e) => set('reason')(e.target.value)} />}</Field>
-      <p className="hint">{tr('لا تتغير لقطة الشهر المؤرشف، ويُسجَّل التصحيح كعملية منفصلة.')}</p>
+      <p className="hint">{tr('يُسجَّل التصحيح كعملية نقاط منفصلة داخل الشهر المختار (من -100 إلى 100، غير صفر)، ثم يُعاد احتساب ترتيب الفريق والحرم لذلك الشهر، وتُحفظ القيم قبل التعديل وبعده في سجل التدقيق.')}</p>
       {err && <p className="err" role="alert">{err}</p>}
-      <DialogActions><Button variant="primary" onClick={save}>{tr('حفظ التصحيح')}</Button><Button onClick={onClose}>{tr('إلغاء')}</Button></DialogActions>
+      <DialogActions><Button variant="primary" onClick={save} disabled={busy}>{tr('حفظ التصحيح')}</Button><Button onClick={onClose}>{tr('إلغاء')}</Button></DialogActions>
     </Dialog>
   );
 }
@@ -52,7 +56,7 @@ function Snapshot({ month }) {
   return (
     <Card style={{ marginTop: 14 }}>
       <h3>{tr('لقطة {month}', { month: monthLabel(month) })}</h3>
-      <Banner icon="lock">{tr('لقطة ثابتة للقراءة فقط، ولا تتأثر بالشهر الحالي أو بالتصحيحات اللاحقة.')}</Banner>
+      <Banner icon="lock">{tr('لقطة الشهر المغلق: لا تتأثر بالشهر الحالي، ولا تتغير إلا بتصحيح متأخر أو بعكس عملية من ذلك الشهر، ويُسجَّل كل تغيير في سجل التدقيق.')}</Banner>
       <FilterBar>
         <Select label={tr('الحرم')} value={f.campus} onChange={(v) => setF({ campus: v, teamId: '' })} options={[['', tr('كل الحرمين')], ['jenin', tr('جنين')], ['ramallah', tr('رام الله')]]} />
         <Select label={tr('الفريق')} value={f.teamId} onChange={(v) => setF((s) => ({ ...s, teamId: v }))} options={teamOpts} />
@@ -64,6 +68,8 @@ function Snapshot({ month }) {
 
 export default function Archive() {
   const toast = useToast();
+  const { user } = useAuth();
+  const isOrganizer = user && user.role === 'organizer';
   const { reload: reloadMeta } = useAppData();
   const state = useAsync(() => archiveApi.getArchive(), []);
   const [view, setView] = useState(null);
@@ -72,7 +78,7 @@ export default function Archive() {
 
   return (
     <>
-      <PageHeader title={tr('الأرشيف الشهري')} subtitle={tr('الأشهر المغلقة محفوظة كلقطات ثابتة ولا يُحذف شيء')} crumb={tr('الأرشيف الشهري')} />
+      <PageHeader title={tr('الأرشيف الشهري')} subtitle={isOrganizer ? tr('الأشهر المغلقة محفوظة كلقطات ثابتة ولا يُحذف شيء') : tr('تصحيح نقاط فريقك في الأشهر المغلقة')} crumb={tr('الأرشيف الشهري')} />
       <Async state={state}>
         {(d) => (
           <>
@@ -83,7 +89,7 @@ export default function Archive() {
                   <div className="le" key={m.id}>
                     <div style={{ flex: 1 }}><b>{monthLabel(m.id)}</b> {m.status === 'open' ? <Badge tone="g">{tr('مفتوح')}</Badge> : <Badge tone="n">{tr('مؤرشف')}</Badge>}</div>
                     {m.status === 'open'
-                      ? <Button small variant="primary" onClick={() => setDlg({ type: 'close' })}>{tr('إغلاق الشهر')}</Button>
+                      ? isOrganizer && <Button small variant="primary" onClick={() => setDlg({ type: 'close' })}>{tr('إغلاق الشهر')}</Button>
                       : <Button small onClick={() => setView(m.id)}>{tr('عرض اللقطة')}</Button>}
                   </div>
                 ))}

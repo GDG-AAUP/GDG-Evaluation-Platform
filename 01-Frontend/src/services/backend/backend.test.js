@@ -5,10 +5,10 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createHttp } from '../httpCore.js';
+import { createHttp, waitForToken } from '../httpCore.js';
 import { createBackend } from './client.js';
 import { translateServerError } from './errorsAr.js';
-import { weightedManagerScore } from './adapters.js';
+import { monthOf, weightedManagerScore } from './adapters.js';
 
 const json = (status, body) => ({
   ok: status >= 200 && status < 300,
@@ -45,7 +45,7 @@ function fakeServer({ me, token = 'tok-1' } = {}) {
     const u = new URL(url);
     const method = init.method || 'GET';
     const body = init.body ? JSON.parse(init.body) : undefined;
-    calls.push({ method, path: u.pathname, search: u.search, body, auth: init.headers && init.headers.Authorization });
+    calls.push({ method, path: u.pathname, search: u.search, body, auth: init.headers && init.headers.Authorization, headers: init.headers || {} });
     const p = u.pathname;
     if (p === '/api/auth/complete-registration' && method === 'POST') {
       // Like the real route: the body must stay EMPTY (no ids, email or role).
@@ -55,6 +55,25 @@ function fakeServer({ me, token = 'tok-1' } = {}) {
     }
     if (p === '/api/auth/me') return ok({ id: current.id, name: current.name, role: current.role, isActive: true, teamId: current.teamId });
     if (p === '/api/campuses') return ok(state.campuses);
+    if (p === '/api/points/team-history') {
+      if (current.role === 'member') return fail(403, 'FORBIDDEN');
+      return ok({
+        scope: current.role === 'manager' ? 'team' : 'awarded',
+        team: current.role === 'manager' ? { id: 10, name: 'Technical' } : null,
+        year: 2026, month: 10,
+        totals: { entries: 2, points: 15, awardedByMe: 10, awardedByMeEntries: 1 },
+        members: [{ userId: '200', name: 'ليان', total: 15, entries: 2 }],
+        entries: [
+          { id: '9', userId: '200', userName: 'ليان', points: 10, activityName: 'ورشة', reason: 'حضور', effectiveAt: '2026-10-05T09:00:00Z', actorName: 'بشار', awardedByMe: true, reversesEntryId: null, reversed: false },
+          { id: '8', userId: '200', userName: 'ليان', points: 5, activityName: 'مسابقة', reason: 'فوز', effectiveAt: '2026-10-04T09:00:00Z', actorName: 'هبة', awardedByMe: false, reversesEntryId: null, reversed: true },
+        ],
+        truncated: false,
+      });
+    }
+    if (p === '/api/registrations' && method === 'GET') return ok([{ id: 7, name: 'سارة', email: 's@gdg.ps', status: 'pending', requestedAt: '2026-11-01T08:00:00Z' }]);
+    if (p === '/api/registrations/count') return ok({ pending: 1 });
+    if (/^\/api\/registrations\/\d+\/approve$/.test(p)) return ok({ user: { id: 400, role: body.role }, emailStatus: 'sent' });
+    if (/^\/api\/registrations\/\d+\/reject$/.test(p)) return ok({ status: 'rejected', emailStatus: 'sent' });
     if (p === '/api/teams' && method === 'GET') return ok(state.teams);
     if (p === '/api/teams' && method === 'POST') {
       const allowed = ['name', 'campusId', 'description'];
@@ -66,7 +85,16 @@ function fakeServer({ me, token = 'tok-1' } = {}) {
     let m;
     if ((m = p.match(/^\/api\/teams\/(\d+)$/))) {
       const t = state.teams.find((x) => x.id === +m[1]);
-      return t ? ok(t) : fail(404, 'TEAM_NOT_FOUND');
+      if (!t) return fail(404, 'TEAM_NOT_FOUND');
+      if (method === 'PATCH') {
+        // Like the real route: name / managerId (null removes) + a required reason; one manager per team.
+        if (Object.keys(body).some((k) => !['name', 'managerId', 'reason'].includes(k)) || !body.reason) return fail(400, 'INVALID_TEAM_DATA');
+        if (body.managerId != null && t.managerId != null && body.managerId !== t.managerId) return fail(409, 'TEAM_MANAGER_EXISTS');
+        if (body.name !== undefined) t.name = body.name;
+        if (body.managerId !== undefined) t.managerId = body.managerId;
+        return ok(t);
+      }
+      return ok(t);
     }
     if ((m = p.match(/^\/api\/teams\/(\d+)\/status$/))) {
       const t = state.teams.find((x) => x.id === +m[1]);
@@ -100,7 +128,31 @@ function fakeServer({ me, token = 'tok-1' } = {}) {
     if ((m = p.match(/^\/api\/users\/(\d+)\/restore$/))) {
       return ok({ id: +m[1], name: 'محذوف', email: 'd@gdg.ps', role: 'member', teamId: 10, isActive: false, deletedAt: null });
     }
-    if (p === '/api/points/me') return ok(state.points);
+    if (p === '/api/points/me') {
+      const q = Object.fromEntries(u.searchParams);
+      const id = `${q.year}-${String(q.month).padStart(2, '0')}`;
+      return ok(state.points.filter((e) => e.effectiveAt.startsWith(id)));
+    }
+    if (p === '/api/points/me/summary') {
+      return ok(u.searchParams.get('month') === '10'
+        ? { total: 610, positive: 620, negative: -10, entryCount: 61, allTimeTotal: 605, rank: 2 }
+        : { total: -5, positive: 0, negative: -5, entryCount: 1, allTimeTotal: 605, rank: 4 });
+    }
+    if (p === '/api/policies' && method === 'GET') return ok({ maxPointsPerOperation: 50, globalLeaderboardEnabled: true });
+    if (p.startsWith('/api/policies/') && method === 'PUT') return ok({ maxPointsPerOperation: body.value, globalLeaderboardEnabled: true });
+    if (p === '/api/awards') {
+      return ok({ campus: 'jenin', month: '2026-10', months: [], groups: [{ teamId: '10', name: 'Technical', leader: { id: '200', name: 'ليان', photo: null, total: 75 } }], winner: null, winnerActivities: [], stale: false, ratedCount: 1, memberCount: 1, demo: false, news: [] });
+    }
+    if (p === '/api/rankings/months') return ok(['2026-08', '2026-09']);
+    if (p === '/api/rankings/public-summary') {
+      return ok({
+        campus: { id: 1, name: 'Jenin' },
+        month: '2026-10',
+        top: [{ rank: 1, name: 'ليان', totalPoints: 75 }],
+        teamLeaders: [{ teamId: 10, teamName: 'Technical', leader: { name: 'ليان', totalPoints: 75 } }],
+        participants: { rated: 3, total: 3 },
+      });
+    }
     if (p === '/api/points' && method === 'POST') {
       const allowed = ['userId', 'points', 'activityName', 'reason', 'activityDescription'];
       if (Object.keys(body).some((k) => !allowed.includes(k))) return fail(400, 'INVALID_POINT_DATA');
@@ -108,12 +160,16 @@ function fakeServer({ me, token = 'tok-1' } = {}) {
       return ok({ id: '9', userId: body.userId, points: body.points, activityName: body.activityName, reason: body.reason, effectiveAt: '2026-10-21T10:00:00Z' }, 201);
     }
     if ((m = p.match(/^\/api\/points\/(\d+)\/reverse$/))) {
-      if (!body.reason) return fail(400, 'INVALID_REVERSAL_DATA');
-      return ok({ id: '10', reversesEntryId: m[1] }, 201);
+      if (Object.keys(body).some((k) => k !== 'reason') || !String(body.reason || '').trim()) return fail(400, 'INVALID_REVERSAL_DATA');
+      if (current.role === 'member') return fail(403, 'FORBIDDEN');
+      if (m[1] === '8') return fail(409, 'ALREADY_REVERSED');
+      if (m[1] === '10') return fail(409, 'CANNOT_REVERSE_REVERSAL');
+      if (m[1] === '77') return fail(403, 'FORBIDDEN');
+      return ok({ id: '10', userId: 200, performedByUserId: current.id, points: -10, activityName: 'ورشة', reason: body.reason, reversesEntryId: m[1], effectiveAt: '2026-10-05T09:00:00Z' }, 201);
     }
     // ---- Phase 2 (Phase-2 API handoff): public rankings, audit, manager evaluations
     if (p === '/api/rankings/options') {
-      return ok({ campuses: [{ id: 1, name: 'Jenin' }], teams: [{ id: 10, campusId: 1, name: 'Technical' }] });
+      return ok({ campuses: [{ id: 1, name: 'Jenin' }, { id: 2, name: 'Ramallah' }], teams: [{ id: 10, campusId: 1, name: 'Technical' }] });
     }
     if (p === '/api/rankings' || p === '/api/rankings/archived') {
       const q = Object.fromEntries(u.searchParams);
@@ -212,16 +268,27 @@ test('users: backend rows map to the UI shape (string ids, campus keys, status)'
   assert.equal((await s.backend.listUsers({ role: 'manager' })).length, 1);
 });
 
-test('users: create sends only the fields the backend accepts; update sends only changes + reason', async () => {
+test('registrations: list, count, approve with campus/team ids, reject with optional reason; no manual creation', async () => {
   const s = fakeServer();
-  const created = await s.backend.createUser({ name: ' سارة ', email: 's@gdg.ps', role: 'member', teams: ['10'], password: 'ignored' });
-  assert.deepEqual(s.calls.find((c) => c.method === 'POST' && c.path === '/api/users').body, { name: 'سارة', email: 's@gdg.ps', role: 'member', teamId: 10 });
-  assert.equal(created.id, '400');
-  assert.equal(created.invitation, 'sent');
+  assert.equal(s.backend.createUser, undefined, 'accounts come only from approved registrations');
+  assert.deepEqual(await s.backend.registrations(), [{ id: '7', name: 'سارة', email: 's@gdg.ps', requestedAt: '2026-11-01T08:00:00Z' }]);
+  assert.equal(await s.backend.pendingRegistrationCount(), 1);
 
-  await assert.rejects(() => s.backend.createUser({ name: 'x', email: 'x@y.z', role: 'organizer', teams: [] }), (e) => e.status === 400);
+  await s.backend.approveRegistration('7', { role: 'member', campus: 'ramallah', teamId: '11' });
+  assert.deepEqual(s.calls.at(-1).body, { role: 'member', campusId: 2, teamId: 11 });
+  assert.equal(s.calls.at(-1).path, '/api/registrations/7/approve');
+  await s.backend.approveRegistration('7', { role: 'organizer', campus: 'jenin', teamId: '10' });
+  assert.deepEqual(s.calls.at(-1).body, { role: 'organizer' }, 'an organizer never carries a team');
+  await assert.rejects(() => s.backend.approveRegistration('7', { role: 'manager', campus: 'jenin', teamId: '' }), (e) => e.status === 400);
 
-  s.calls.length = 0;
+  await s.backend.rejectRegistration('7', '  ');
+  assert.deepEqual(s.calls.at(-1).body, {});
+  await s.backend.rejectRegistration('7', ' ليس عضوًا ');
+  assert.deepEqual(s.calls.at(-1).body, { reason: 'ليس عضوًا' });
+});
+
+test('users: update sends only changes + reason', async () => {
+  const s = fakeServer();
   await s.backend.updateUser('200', { name: 'ليان أبو سعدة', email: 'u@gdg.ps', role: 'member', teams: ['10'] });
   const patch = s.calls.find((c) => c.method === 'PATCH');
   assert.deepEqual(Object.keys(patch.body).sort(), ['name', 'reason']);
@@ -230,6 +297,16 @@ test('users: create sends only the fields the backend accepts; update sends only
   const same = await s.backend.updateUser('200', { name: 'ليان', email: 'U@gdg.ps', role: 'member', teams: ['10'] });
   assert.equal(s.calls.some((c) => c.method === 'PATCH'), false, 'no change -> no request');
   assert.equal(same.id, '200');
+});
+
+test('users: demoting an organizer sends the new role, the team and a reason', async () => {
+  const s = fakeServer();
+  await s.backend.updateUser('1', { name: 'هبة', email: 'org@gdg.ps', role: 'member', teams: ['10'] });
+  const patch = s.calls.find((c) => c.method === 'PATCH' && c.path === '/api/users/1');
+  assert.deepEqual(patch.body, { role: 'member', teamId: 10, reason: 'تعديل بيانات من لوحة المنظّم' });
+  const { message } = translateServerError(409, { error: { code: 'SELF_LOCKOUT', message: 'x' } });
+  assert.match(message, /بنفسك/);
+  assert.match(translateServerError(409, { error: { code: 'LAST_ACTIVE_ORGANIZER' } }).message, /آخر منظّم/);
 });
 
 test('users: status toggle, delete with reason, restore comes back disabled', async () => {
@@ -265,11 +342,31 @@ test('teams: list with managers/member counts, create, toggle (activation needs 
   assert.deepEqual(s.calls.find((c) => c.method === 'POST' && c.path === '/api/teams').body, { name: 'Design', campusId: 2 });
   assert.equal(made.status, 'disabled');
 
-  await assert.rejects(() => s.backend.saveTeam({ id: '10', name: 'x', campus: 'jenin' }), (e) => e.status === 501);
   await assert.rejects(() => s.backend.toggleTeam('11'), (e) => e.status === 409 && /مديرًا فعّالًا/.test(e.message));
   const off = await s.backend.toggleTeam('10');
   assert.equal(off.status, 'disabled');
   assert.deepEqual((await s.backend.listCampusManagers('jenin')).map((m) => m.id), ['100']);
+});
+
+test('teams: edit sends only the changes + reason; one manager per team; Arabic conflict message', async () => {
+  const s = fakeServer();
+  const same = await s.backend.saveTeam({ id: '10', name: 'Technical', campus: 'jenin', managerIds: ['100'] });
+  assert.equal(same.name, 'Technical');
+  assert.equal(s.calls.some((c) => c.method === 'PATCH'), false, 'no change -> no request');
+
+  const set = await s.backend.saveTeam({ id: '11', name: 'PR Team', campus: 'ramallah', managerIds: ['100'] });
+  const sent = s.calls.find((c) => c.method === 'PATCH' && c.path === '/api/teams/11');
+  assert.deepEqual(sent.body, { name: 'PR Team', managerId: 100, reason: 'تعديل فريق من لوحة المنظّم' });
+  assert.equal(set.managerId, '100');
+
+  await assert.rejects(
+    () => s.backend.saveTeam({ id: '10', name: 'Technical', campus: 'jenin', managerIds: ['201'] }),
+    (e) => e.status === 409 && e.details.code === 'TEAM_MANAGER_EXISTS' && /مدير واحد فقط/.test(e.message),
+  );
+  await assert.rejects(() => s.backend.saveTeam({ id: '11', name: 'PR', managerIds: ['1', '100'] }), (e) => e.status === 400);
+
+  await s.backend.saveTeam({ id: '11', name: 'PR Team', campus: 'ramallah', managerIds: [] });
+  assert.deepEqual(s.calls.filter((c) => c.method === 'PATCH').at(-1).body, { managerId: null, reason: 'تعديل فريق من لوحة المنظّم' });
 });
 
 /* ---------------------------------------------------------------- points */
@@ -285,15 +382,22 @@ test('points: add sends exactly the allowed fields; reverse; my points per month
   await assert.rejects(() => s.backend.reversePoints('5x', 'a'), (e) => e.status === 400);
 
   const mine = await s.backend.myPoints('2026-10');
-  assert.equal(mine.total, 10);
+  assert.equal(mine.total, 610, 'the total comes from the SQL summary, not the listed rows');
   assert.equal(mine.entries.length, 1);
-  assert.equal(mine.rank, null);
+  assert.equal(mine.rank, 2);
   assert.equal((await s.backend.myPoints('2026-09')).negative, -5);
 });
 
-test('points: assignable members — organizer sees all active members, manager only own team', async () => {
+test('meta lists closed months before the open month; months follow Asia/Hebron', async () => {
+  const s = fakeServer();
+  const meta = await s.backend.meta();
+  assert.deepEqual(meta.months.map((m) => [m.id, m.status]), [['2026-08', 'archived'], ['2026-09', 'archived'], ['2026-10', 'open']]);
+  assert.equal(monthOf('2026-09-30T21:30:00Z'), '2026-10', '00:30 on 1 October in Hebron');
+});
+
+test('points: assignable members — organizer sees active members and managers, manager only own team', async () => {
   const org = fakeServer();
-  assert.deepEqual((await org.backend.assignableMembers()).map((m) => m.id), ['200']);
+  assert.deepEqual((await org.backend.assignableMembers()).map((m) => m.id), ['100', '200']);
   const mgr = fakeServer({ me: { id: 100, name: 'بشار', role: 'manager', teamId: 10 } });
   assert.deepEqual((await mgr.backend.assignableMembers()).map((m) => m.id), ['200']);
   assert.ok(mgr.calls.some((c) => c.path === '/api/teams/10/members'));
@@ -301,10 +405,12 @@ test('points: assignable members — organizer sees all active members, manager 
   assert.deepEqual(await mem.backend.assignableMembers(), []);
 });
 
-test('not supported yet: policies are read-only defaults, edit is refused with a clear 501', async () => {
+test('policies are read from and saved to the backend', async () => {
   const s = fakeServer();
   assert.equal((await s.backend.policies()).maxPointsPerOperation, 50);
-  await assert.rejects(() => s.backend.setPolicy('x', 1), (e) => e.status === 501 && e.details.code === 'NOT_SUPPORTED_BY_BACKEND');
+  assert.equal((await s.backend.setPolicy('maxPointsPerOperation', 40)).maxPointsPerOperation, 40);
+  assert.deepEqual(s.calls.at(-1).body, { value: 40 });
+  assert.equal(s.calls.at(-1).path, '/api/policies/maxPointsPerOperation');
 });
 
 /* ------------------------------------------------- Phase 2: rankings / audit / evaluations */
@@ -312,7 +418,7 @@ test('not supported yet: policies are read-only defaults, edit is refused with a
 test('rankings: public (no token), strict query, dense rank ties, archived path', async () => {
   const s = fakeServer();
   const opts = await s.backend.rankingOptions();
-  assert.deepEqual(opts.campuses, [{ id: '1', key: 'jenin', name: 'Jenin' }]);
+  assert.deepEqual(opts.campuses, [{ id: '1', key: 'jenin', name: 'Jenin' }, { id: '2', key: 'ramallah', name: 'Ramallah' }]);
   assert.equal(s.calls.at(-1).auth, undefined, 'public route is called without a token');
 
   const rows = await s.backend.rankings({ scope: 'team', teamId: '10', month: '2026-10' });
@@ -375,9 +481,21 @@ test('Phase 2 error codes have Arabic messages', () => {
   }
 });
 
-test('leaderboard (page shape): public rankings by points, current vs archived month, isMe, merged campuses', async () => {
+test('leaderboard: one campus per board (never combined), backend DENSE_RANK passed through', async () => {
   const s = fakeServer({ me: { id: 200, name: 'ليان', role: 'member', teamId: 10 } });
-  const cur = await s.backend.leaderboard({ month: '2026-10', global: true });
+  await s.backend.leaderboard({ month: '2026-10', campus: 'ramallah' });
+  const boards = s.calls.filter((c) => c.path === '/api/rankings');
+  assert.equal(boards.length, 1, 'exactly one ranking request: no cross-campus merge');
+  assert.equal(boards[0].search, '?scope=campus&year=2026&month=10&campusId=2');
+  const dflt = await s.backend.leaderboard({ month: '2026-10', global: true });
+  assert.equal(s.calls.filter((c) => c.path === '/api/rankings').length, 2, 'a "global" flag is ignored');
+  assert.equal(s.calls.at(-1).search, '?scope=campus&year=2026&month=10&campusId=1');
+  assert.deepEqual(dflt.rows.map((r) => r.rank), [1, 2, 2], 'dense ranks (1, 2, 2), never 1, 2, 2 -> 4');
+});
+
+test('leaderboard (page shape): public rankings by points, current vs archived month, isMe', async () => {
+  const s = fakeServer({ me: { id: 200, name: 'ليان', role: 'member', teamId: 10 } });
+  const cur = await s.backend.leaderboard({ month: '2026-10', campus: 'jenin' });
   assert.equal(cur.archived, false);
   assert.equal(cur.month, '2026-10');
   assert.ok(s.calls.some((c) => c.path === '/api/rankings'));
@@ -385,7 +503,7 @@ test('leaderboard (page shape): public rankings by points, current vs archived m
   assert.equal(cur.rows[0].campus, 'jenin');
   assert.equal(cur.rows[0].kind, 'points');
 
-  const old = await s.backend.leaderboard({ month: '2026-09', global: true });
+  const old = await s.backend.leaderboard({ month: '2026-09', campus: 'jenin' });
   assert.equal(old.archived, true);
   assert.ok(s.calls.some((c) => c.path === '/api/rankings/archived'));
 
@@ -395,13 +513,26 @@ test('leaderboard (page shape): public rankings by points, current vs archived m
   assert.equal(s.calls.at(-1).search, '?scope=campus&year=2026&month=10&campusId=1');
 });
 
-test('hall (welcome page): team leaders from public rankings, no winner / news without those services', async () => {
+test('hall: signed-in users get selectable leader IDs from /awards', async () => {
+  const s = fakeServer();
+  const h = await s.backend.hall({ campus: 'jenin', signedIn: true });
+  assert.equal(h.groups[0].leader.id, '200');
+  assert.match(s.calls.at(-1).auth, /^Bearer .+/);
+});
+
+test('full rankings send the signed-in token', async () => {
+  const s = fakeServer();
+  await s.backend.rankings({ scope: 'campus', campusId: '1', month: '2026-10' });
+  assert.match(s.calls.at(-1).auth, /^Bearer .+/);
+});
+
+test('hall (welcome page): team leaders from the public summary, no winner / news without those services', async () => {
   const s = fakeServer();
   const h = await s.backend.hall({ campus: 'jenin' });
   assert.equal(h.campus, 'jenin');
   assert.equal(h.groups.length, 1);
   assert.equal(h.groups[0].teamId, '10');
-  assert.deepEqual(h.groups[0].leader, { id: '200', name: 'ليان', photo: null, total: 75 });
+  assert.deepEqual(h.groups[0].leader, { id: null, name: 'ليان', photo: null, total: 75 });
   assert.equal(h.winner, null);
   assert.deepEqual(h.news, []);
   assert.equal(h.ratedCount, 3);
@@ -442,6 +573,84 @@ test('evaluations: managerEvaluations lists active managers with their monthly a
   assert.ok(avg && /year=2026/.test(avg.search) && /month=10/.test(avg.search));
 });
 
+test('points: a manager reads the team points log (entries, totals, who added each one)', async () => {
+  const s = fakeServer({ me: { id: 100, name: 'بشار', role: 'manager', teamId: 10 } });
+  const h = await s.backend.teamPointsHistory();
+  assert.equal(s.calls.at(-1).path, '/api/points/team-history');
+  assert.equal(s.calls.at(-1).search, '?limit=200', 'no month = the current month on the server');
+  assert.equal(h.scope, 'team');
+  assert.deepEqual(h.team, { id: '10', name: 'Technical' });
+  assert.equal(h.month, '2026-10');
+  assert.deepEqual(h.totals, { entries: 2, points: 15, awardedByMe: 10, awardedByMeEntries: 1 });
+  assert.deepEqual(h.members, [{ userId: '200', name: 'ليان', total: 15, entries: 2 }]);
+  assert.deepEqual(h.entries.map((e) => [e.id, e.value, e.activity, e.reason, e.awardedByMe, e.reversed]),
+    [['9', 10, 'ورشة', 'حضور', true, false], ['8', 5, 'مسابقة', 'فوز', false, true]]);
+  await s.backend.teamPointsHistory('2026-09');
+  assert.equal(s.calls.at(-1).search, '?year=2026&month=9&limit=200');
+  await assert.rejects(() => s.backend.teamPointsHistory('bad'), (e) => e.status === 400);
+  const member = fakeServer({ me: { id: 200, name: 'ليان', role: 'member', teamId: 10 } });
+  await assert.rejects(() => member.backend.teamPointsHistory(), (e) => e.status === 403);
+});
+
+test('points: reversePoint posts { reason } to /points/:id/reverse and maps the reversal entry', async () => {
+  const s = fakeServer({ me: { id: 100, name: 'بشار', role: 'manager', teamId: 10 } });
+  const res = await s.backend.reversePoint('9', '  أُضيفت بالخطأ ');
+  const call = s.calls.at(-1);
+  assert.equal(call.method, 'POST');
+  assert.equal(call.path, '/api/points/9/reverse');
+  assert.deepEqual(call.body, { reason: 'أُضيفت بالخطأ' }, 'only the trimmed reason is sent');
+  assert.equal(res.ok, true);
+  assert.equal(res.entry.id, '10');
+  assert.equal(res.entry.reverses, '9');
+  assert.equal(res.entry.value, -10);
+
+  const before = s.calls.length;
+  await assert.rejects(() => s.backend.reversePoint('9', '   '), (e) => e.status === 400 && /سبب العكس إلزامي/.test(e.message));
+  await assert.rejects(() => s.backend.reversePoint('9', 'x'.repeat(501)), (e) => e.status === 400 && /طويل جدًا/.test(e.message));
+  await assert.rejects(() => s.backend.reversePoint('9x', 'سبب'), (e) => e.status === 400);
+  assert.equal(s.calls.length, before, 'invalid input never reaches the server');
+});
+
+test('points: reversal refusals come back as clear Arabic messages', async () => {
+  const s = fakeServer({ me: { id: 100, name: 'بشار', role: 'manager', teamId: 10 } });
+  await assert.rejects(() => s.backend.reversePoint('8', 'سبب'), (e) => e.status === 409 && e.message === 'هذه العملية معكوسة مسبقًا.');
+  await assert.rejects(() => s.backend.reversePoint('10', 'سبب'), (e) => e.status === 409 && e.message === 'لا يمكن عكس عملية عكسية.');
+  await assert.rejects(() => s.backend.reversePoint('77', 'سبب'), (e) => e.status === 403 && e.message === 'ليس لديك صلاحية لهذه العملية.');
+  const member = fakeServer({ me: { id: 200, name: 'ليان', role: 'member', teamId: 10 } });
+  await assert.rejects(() => member.backend.reversePoint('9', 'سبب'), (e) => e.status === 403);
+});
+
+test('assistant: an unavailable assistant explains why, in Arabic', () => {
+  const quota = translateServerError(503, { error: { code: 'ASSISTANT_UNAVAILABLE', reason: 'AI_QUOTA_EXCEEDED', message: 'x' } });
+  assert.match(quota.message, /حد الاستخدام اليومي/);
+  assert.match(quota.message, /نقاط فريقك/, 'tells the user what still works');
+  assert.equal(quota.details.reason, 'AI_QUOTA_EXCEEDED');
+  const busy = translateServerError(503, { error: { code: 'ASSISTANT_UNAVAILABLE', reason: 'AI_UNAVAILABLE' } });
+  assert.match(busy.message, /مشغولة/);
+  const unknown = translateServerError(503, { error: { code: 'ASSISTANT_UNAVAILABLE', reason: 'SOMETHING_NEW' } });
+  assert.match(unknown.message, /المساعد غير متاح مؤقتًا/);
+  assert.match(translateServerError(504, { error: { code: 'ASSISTANT_TIMEOUT' } }).message, /وقتًا طويلًا/);
+});
+
+test('points: every submission carries an Idempotency-Key (a retry reuses the given key)', async () => {
+  const s = fakeServer();
+  await s.backend.addPoints({ userId: '200', value: 5, reason: 'ورشة' });
+  await s.backend.addPoints({ userId: '200', value: 5, reason: 'ورشة' });
+  const keys = s.calls.filter((c) => c.method === 'POST' && c.path === '/api/points').map((c) => c.headers['Idempotency-Key']);
+  assert.equal(keys.length, 2);
+  assert.ok(keys.every((k) => /^[A-Za-z0-9._:-]{1,100}$/.test(k)));
+  assert.notEqual(keys[0], keys[1], 'two deliberate submissions get two keys');
+  await s.backend.addPoints({ userId: '200', value: 5, reason: 'ورشة', idempotencyKey: 'retry-1' });
+  assert.equal(s.calls.at(-1).headers['Idempotency-Key'], 'retry-1');
+});
+
+test('Arabic messages for duplicate points and closed-month corrections', () => {
+  for (const code of ['DUPLICATE_POINT_SUBMISSION', 'IDEMPOTENCY_KEY_REUSED', 'CORRECTION_REASON_REQUIRED', 'MONTH_NOT_CLOSED', 'NO_TEAM_IN_MONTH']) {
+    const { message } = translateServerError(409, { error: { code, message: 'English' } });
+    assert.match(message, /[؀-ۿ]/, code);
+  }
+});
+
 test('points: addPoints uses the typed activity name, and falls back to the reason', async () => {
   const s = fakeServer();
   await s.backend.addPoints({ userId: '200', value: 15, reason: 'حضور وتفاعل', activity: 'ورشة React' });
@@ -450,4 +659,25 @@ test('points: addPoints uses the typed activity name, and falls back to the reas
   await s.backend.addPoints({ userId: '200', value: -5, reason: 'تأخر' });
   const b = s.calls.filter((c) => c.path === '/api/points' && c.method === 'POST').pop();
   assert.equal(b.body.activityName, 'تأخر');
+});
+
+test('waitForToken waits for a late Clerk token and gives up cleanly', async () => {
+  let calls = 0;
+  assert.equal(await waitForToken(async () => (++calls < 3 ? null : 'tok'), { delayMs: 1 }), 'tok');
+  assert.equal(calls, 3);
+  assert.equal(await waitForToken(async () => null, { attempts: 2, delayMs: 1 }), null);
+});
+
+test('a missing project account does not open the session-expired dialog', async () => {
+  for (const [code, expected] of [['USER_NOT_FOUND_IN_DB', 0], ['UNAUTHENTICATED', 1]]) {
+    let opened = 0;
+    const http = createHttp({
+      baseUrl: 'http://api.test/api',
+      getToken: async () => 'tok',
+      onUnauthorized: () => { opened += 1; },
+      fetchImpl: async () => new Response(JSON.stringify({ error: { code, message: 'x' } }), { status: 401 }),
+    });
+    await assert.rejects(() => http.get('/auth/me'), (e) => e.status === 401);
+    assert.equal(opened, expected, code);
+  }
 });

@@ -16,7 +16,6 @@ import {
 } from "../../services/index.js";
 import { ratingsApi } from "../../services/ratings.js";
 import AddPointsDialog from "../../components/domain/AddPointsDialog.jsx";
-import UserDialog from "../../components/domain/UserDialog.jsx";
 import { ConfirmDialog } from "../../components/ui/Dialog.jsx";
 import {
   Button,
@@ -345,9 +344,9 @@ export default function OrgOverview() {
           <div className="overview-actions">
             <Button
               icon="user-plus"
-              onClick={() => setDlg("member")}
+              onClick={() => navigate("/organizer/registrations")}
             >
-              {tr("إضافة عضو")}
+              {tr("طلبات الانضمام")}
             </Button>
 
             <Button
@@ -773,14 +772,6 @@ export default function OrgOverview() {
           );
         }}
       </Async>
-
-      {dlg === "member" && (
-        <UserDialog
-          kind="member"
-          onDone={done}
-          onClose={close}
-        />
-      )}
 
       {dlg === "points" && (
         <AddPointsDialog onDone={done} onClose={close} />

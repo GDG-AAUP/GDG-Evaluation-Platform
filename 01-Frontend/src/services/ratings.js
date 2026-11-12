@@ -1,5 +1,5 @@
 import { api } from "./call.js";
-import { http } from "./http.js";
+import { http, getAuthProvider } from "./http.js";
 import { backend } from "./backend/index.js";
 import * as E from "./mock/ratings.js";
 export const ratingsApi = {
@@ -17,7 +17,7 @@ export const ratingsApi = {
   hall: (campus, month) =>
     api(
       (d, a) => E.hall(d, a, { campus, month }),
-      () => backend.hall({ campus, month }),
+      () => backend.hall({ campus, month, signedIn: !!getAuthProvider() }),
       { public: true },
     ),
   selectWinner: (body) =>

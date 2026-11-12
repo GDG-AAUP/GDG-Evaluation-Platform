@@ -4,8 +4,6 @@ const loadProjectUser = require('../middleware/load-project-user')
 const requireRole = require('../middleware/require-role')
 const repository = require('../repositories/users.repository')
 const parsePositiveId = require('../utils/parse-positive-id')
-const validateCreateUser = require('../validators/create-user.validator')
-const invitationsRepository = require('../repositories/user-invitations.repository')
 const invitationsService = require('../services/user-invitations.service')
 const validateUpdateUser = require('../validators/update-user.validator')
 const userUpdateService = require('../services/update-user.service')
@@ -13,12 +11,20 @@ const deletionRepository = require('../repositories/user-deletion.repository')
 
 const router = express.Router()
 
+// An organizer never removes their own access (demotion, deactivation or deletion): another
+// organizer must do it, so the platform cannot be left without someone who can undo a mistake.
+const SELF_LOCKOUT = { error: { code: 'SELF_LOCKOUT', message: 'You cannot demote, deactivate or delete your own organizer account' } }
+
 // Edits business fields while preserving verified identity, manager coverage and assignment history.
 router.patch('/:id', loadProjectUser, requireRole('organizer'), async (req, res) => {
   const id = parsePositiveId(req.params.id)
   if (id === null || id > 2147483647) return res.status(400).json({ error: { code: 'INVALID_USER_ID', message: 'A valid positive PostgreSQL user ID is required' } })
   const validation = validateUpdateUser(req.body)
   if (validation.error) return res.status(400).json({ error: { code: 'INVALID_USER_DATA', message: validation.error } })
+  if (id === req.projectUser.id &&
+      ((validation.value.role && validation.value.role !== 'organizer') || validation.value.isActive === false)) {
+    return res.status(409).json(SELF_LOCKOUT)
+  }
   const result = await userUpdateService.updateUser(id, validation.value, req.projectUser.id)
   const failures = {
     actor_forbidden: [403, 'FORBIDDEN', 'An active organizer is required'],
@@ -87,6 +93,7 @@ for (const [method, path, operation] of [
         typeof body.reason !== 'string' || !body.reason.trim() || body.reason.trim().length > 1000) {
       return res.status(400).json({ error: { code: 'INVALID_DELETION_DATA', message: 'Provide only a reason of 1 to 1000 characters' } })
     }
+    if (method === 'delete' && id === req.projectUser.id) return res.status(409).json(SELF_LOCKOUT)
     const result = await operation(id, req.projectUser.id, body.reason.trim())
     const failures = {
       actor_forbidden: [403, 'FORBIDDEN', 'An active organizer is required'],
@@ -144,6 +151,10 @@ router.patch(
       })
     }
 
+    if (id === req.projectUser.id && body.isActive === false) {
+      return res.status(409).json(SELF_LOCKOUT)
+    }
+
     const result = await repository.setUserActiveStatus(
       id,
       body.isActive,
@@ -189,91 +200,8 @@ router.patch(
     })
   },
 )
-// Creates a member or manager account and attempts to send its Clerk invitation.
-router.post(
-  '/',
-  loadProjectUser,
-  requireRole('organizer'),
-  async (req, res) => {
-    const validation = validateCreateUser(req.body)
-
-    if (validation.error) {
-      return res.status(400).json({
-        error: {
-          code: 'INVALID_USER_DATA',
-          message: validation.error,
-        },
-      })
-    }
-
-    const result = await invitationsRepository.createPendingUser(
-      validation.value,
-      req.projectUser.id,
-    )
-
-    const failures = {
-      actor_forbidden: {
-        status: 403,
-        code: 'FORBIDDEN',
-        message: 'An active organizer account is required',
-      },
-      email_exists: {
-        status: 409,
-        code: 'EMAIL_ALREADY_EXISTS',
-        message: 'A project account with this email already exists',
-      },
-      team_not_found: {
-        status: 404,
-        code: 'TEAM_NOT_FOUND',
-        message: 'Team not found',
-      },
-      manager_exists: {
-        status: 409,
-        code: 'TEAM_MANAGER_EXISTS',
-        message: 'This team already has a manager',
-      },
-    }
-
-    if (result.outcome !== 'created') {
-      const failure = failures[result.outcome]
-
-      if (!failure) {
-        throw new Error('Unexpected account creation outcome')
-      }
-
-      return res.status(failure.status).json({
-        error: {
-          code: failure.code,
-          message: failure.message,
-        },
-      })
-    }
-
-    let delivery
-
-    try {
-      delivery = await invitationsService.sendUserInvitation(
-        result.user.id,
-        req.projectUser.id,
-      )
-    } catch {
-      delivery = { outcome: 'needs_review' }
-    }
-
-    const sent = ['sent', 'existing_invitation'].includes(delivery.outcome)
-
-    return res.status(201).json({
-      data: {
-        ...result.user,
-        invitationStatus: delivery.invitationStatus || result.user.invitationStatus,
-        deliveryStatus: delivery.outcome,
-      },
-      message: sent
-        ? 'Account created and invitation created at Clerk; inbox delivery is not confirmed'
-        : 'Account created; invitation delivery requires review. Do not create the account again.',
-    })
-  },
-)
+// Accounts are no longer created by hand: people sign up at Clerk and an organizer approves them
+// through /api/registrations, which creates the project account.
 // Reviews reconcile local state without email; explicit resends revoke the previous pending link.
 const invitationMessages = {
   sent: [200, 'Invitation created at Clerk; inbox delivery is not confirmed'],

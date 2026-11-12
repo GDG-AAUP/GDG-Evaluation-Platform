@@ -1,0 +1,19 @@
+# Secrets: real environment files anywhere in the repository. Templates stay tracked.
+.env
+.env.*
+!.env.example
+
+# Dependencies, virtual environments and build output
+node_modules/
+.venv/
+venv/
+dist/
+dist-single/
+__pycache__/
+*.pyc
+.pytest_cache/
+coverage/
+
+# Database dumps and logs
+*.dump
+*.log

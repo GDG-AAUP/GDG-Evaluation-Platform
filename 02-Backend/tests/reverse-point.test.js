@@ -24,7 +24,10 @@ const original = {
   points: 20,
   activityName: 'Workshop',
   activityDescription: null,
-  reversesEntryId: null
+  reversesEntryId: null,
+  effectiveAt: '2026-10-05T09:00:00.000Z',
+  year: 2026,
+  month: 10
 };
 
 const validRecipient = {
@@ -61,6 +64,13 @@ function createMock({
         params
       });
 
+      // The recipient's team when the original entry took effect.
+      if (/FROM\s+assignment_history\b/i.test(statement)) {
+        return {
+          rows: recipient ? [{ teamId: recipient.teamId, campusId: 1, managerId: recipient.managerId }] : []
+        };
+      }
+
       if (/FROM\s+users\s+u\b/i.test(statement)) {
         return {
           rows: recipient ? [recipient] : []
@@ -73,7 +83,7 @@ function createMock({
         };
       }
 
-      if (/FROM\s+point_entries\b/i.test(statement)) {
+      if (/FROM\s+point_entries\b/i.test(statement) && !/^INSERT/i.test(statement)) {
         if (
           /WHERE\s+reverses_entry_id\s*=\s*\$1/i.test(statement)
         ) {
@@ -103,7 +113,7 @@ function createMock({
           reason: params[4],
           activityDescription: params[5],
           reversesEntryId: String(params[6]),
-          effectiveAt: '2026-10-23T14:00:00.000Z'
+          effectiveAt: original.effectiveAt
         };
 
         return {
@@ -246,10 +256,24 @@ test('prevents reversing an existing reversal entry', async () => {
 // Recipient authorization
 // ---------------------------------------------
 
-test('rejects an original entry with a missing recipient', async () => {
+test('a manager cannot reverse an entry from when the person was in no team of theirs', async () => {
   await assertRejected(
     createMock({ recipient: null }),
-    'recipient_not_found'
+    'forbidden'
+  );
+});
+
+test('an organizer reverses globally, even with no team on record', async () => {
+  const mock = createMock({ dbActor: { role: 'organizer', isActive: true, deletedAt: null }, recipient: null });
+  const result = await reversePoint(mock.pool, organizer, '42', 'Incorrect points');
+  assert.equal(result.outcome, 'reversed');
+  assert.equal(result.entry.points, -20);
+});
+
+test('a manager cannot reverse an entry about themselves', async () => {
+  await assertRejected(
+    createMock({ entry: { ...original, userId: 5 }, recipient: { ...validRecipient, userId: 5 } }),
+    'forbidden'
   );
 });
 
@@ -266,16 +290,10 @@ test('rejects a recipient assigned to another manager', async () => {
   );
 });
 
-test('rejects an inactive recipient', async () => {
-  await assertRejected(
-    createMock({
-      recipient: {
-        ...validRecipient,
-        isActive: false
-      }
-    }),
-    'forbidden'
-  );
+test('a later status change does not block the team manager', async () => {
+  const mock = createMock({ recipient: { ...validRecipient, isActive: false } });
+  const result = await reversePoint(mock.pool, actor, '42', 'Incorrect points');
+  assert.equal(result.outcome, 'reversed');
 });
 
 // ---------------------------------------------
@@ -340,9 +358,12 @@ test('reverses positive points and commits audit', async () => {
     '42'
   ]);
 
-  assert.deepEqual(auditInsert.params, [
+  // before = the original entry, after = the compensating entry.
+  const { year: _y, month: _m, ...originalEntry } = original;
+  assert.deepEqual(auditInsert.params.slice(0, 5), [
     5,
     '43',
+    JSON.stringify(originalEntry),
     JSON.stringify(mock.reversal()),
     'Incorrect points'
   ]);

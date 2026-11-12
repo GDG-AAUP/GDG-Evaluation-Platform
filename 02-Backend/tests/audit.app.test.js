@@ -64,24 +64,24 @@ test('Audit API is protected in the real Express app', {
     assert.ok(Array.isArray(body.data.teams));
   });
 
-  await t.test('Public archived rankings still work', async () => {
+  await t.test('Archived rankings require login', async () => {
     const { response, body } = await request(
       '/api/rankings/archived?scope=team&teamId=2&year=2026&month=9'
     );
 
-    assert.equal(response.status, 200);
-    assert.ok(Array.isArray(body.data));
+    assert.equal(response.status, 401);
+    assert.equal(body.error.code, 'UNAUTHENTICATED');
   });
 
-  await t.test('Invalid public ranking query returns 400', async () => {
+  await t.test('Full rankings require login before query validation', async () => {
     const { response, body } = await request(
       '/api/rankings?scope=global&year=2026&month=10'
     );
 
-    assert.equal(response.status, 400);
+    assert.equal(response.status, 401);
     assert.equal(
       body.error.code,
-      'INVALID_RANKING_QUERY'
+      'UNAUTHENTICATED'
     );
   });
 });

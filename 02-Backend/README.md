@@ -6,7 +6,7 @@ Express API with PostgreSQL and Clerk authentication. This repository contains b
 
 1. Install Node.js 24 and PostgreSQL. Run `npm ci`.
 2. Create `.env` using `.env.example` and fill in database credentials and the Clerk application's keys. Keep `.env` private.
-3. For a new empty database, run `db/GDG_evaluation_database.final.postgresql.sql`, followed by migrations `002_user_invitations.sql`, `003_user_soft_delete.sql`, and `004_final_backend_schema.sql` in order. Existing initialized databases need only unapplied migrations; do not rerun the base schema or migration 002.
+3. For a new empty database, run `psql -d gdg_evaluation -v ON_ERROR_STOP=1 -f db/setup-new-database.sql`, which applies the base schema and migrations 002 to 008 in order. Existing initialized databases need only unapplied migrations; do not rerun the base schema or migration 002.
 4. Configure `CLERK_INVITATION_REDIRECT_URL` with the frontend team's invitation acceptance URL. Use HTTPS in production. Invitations cannot be sent without it; the backend does not host that page.
 5. Provision the initial active Organizer account in the database with its Clerk user ID. Subsequent access uses verified sessions and database roles.
 6. Run `npm run dev` for development or `npm start` for normal startup.

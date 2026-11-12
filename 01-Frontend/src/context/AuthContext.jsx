@@ -8,12 +8,14 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [ready, setReady] = useState(false);
   const [expired, setExpired] = useState(false);
+  // Why the API refused a signed-in account, e.g. REGISTRATION_PENDING (shown on the login page).
+  const [accessCode, setAccessCode] = useState(null);
 
   useEffect(() => {
     let alive = true;
     authApi.currentUser()
       .then((u) => { if (alive) setUser(u); })
-      .catch(() => {})
+      .catch((e) => { if (alive) setAccessCode(e?.details?.code || null); })
       .finally(() => { if (alive) setReady(true); });
     return () => { alive = false; };
   }, []);
@@ -42,8 +44,8 @@ export function AuthProvider({ children }) {
   }, []);
 
   const value = useMemo(
-    () => ({ user, ready, expired, login, logout, demoSwitch }),
-    [user, ready, expired, login, logout, demoSwitch],
+    () => ({ user, ready, expired, accessCode, login, logout, demoSwitch }),
+    [user, ready, expired, accessCode, login, logout, demoSwitch],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

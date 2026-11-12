@@ -10,6 +10,7 @@
     "test:db": "node --env-file=.env --test tests/*.test.js",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit",
+    "predev": "npm run build",
     "pretest": "npm run build",
     "pretest:db": "npm run build",
     "prestart": "npm run build"
@@ -23,6 +24,7 @@
     "cors": "^2.8.6",
     "dotenv": "^18.0.8",
     "express": "^5.3.0",
+    "nodemailer": "10.2.1",
     "pg": "^8.23.1"
   },
   "devDependencies": {

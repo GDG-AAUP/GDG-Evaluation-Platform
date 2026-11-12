@@ -12,6 +12,7 @@ import Archive from "./pages/organizer/Archive.jsx";
 import AuditLog from "./pages/organizer/AuditLog.jsx";
 import SystemLog from "./pages/organizer/SystemLog.jsx";
 import Policies from "./pages/organizer/Policies.jsx";
+import Registrations from "./pages/organizer/Registrations.jsx";
 
 import Ratings from "./pages/Ratings.jsx";
 import Awards from "./pages/Awards.jsx";
@@ -37,7 +38,10 @@ export const ROUTES = [
   { path: "/organizer/points", roles: ["organizer"], element: OrgPoints },
   { path: "/organizer/evals", roles: ["organizer"], element: Evaluations },
   { path: "/organizer/archive", roles: ["organizer"], element: Archive },
+  // Managers correct closed months of their own team (same page, without "close month").
+  { path: "/manager/archive", roles: ["manager"], element: Archive },
   { path: "/organizer/audit", roles: ["organizer"], element: AuditLog },
   { path: "/organizer/syslog", roles: ["organizer"], element: SystemLog },
   { path: "/organizer/policies", roles: ["organizer"], element: Policies },
+  { path: "/organizer/registrations", roles: ["organizer"], element: Registrations },
 ];

@@ -11,10 +11,14 @@ import { teamLabel } from '../../lib/constants.js';
 /** 'Jenin' -> 'jenin', 'Ramallah' -> 'ramallah'. */
 export const campusKey = (name) => String(name || '').trim().toLowerCase().replace(/\s+/g, '-');
 
+const HEBRON_MONTH = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Hebron', year: 'numeric', month: '2-digit' });
+
+/** 'YYYY-MM' of an instant in Asia/Hebron, the platform's official timezone. */
 export const monthOf = (iso) => {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+  const part = (type) => HEBRON_MONTH.formatToParts(d).find((p) => p.type === type).value;
+  return `${part('year')}-${part('month')}`;
 };
 
 export function mapTeam(t, campusNameById) {
@@ -76,9 +80,20 @@ export const AUDIT_ACTION_AR = {
   create_point_entry: 'إضافة نقاط',
   reverse_point_entry: 'عكس عملية نقاط',
   PERFORMANCE_EVALUATION_CREATED: 'إنشاء تقييم أداء',
+  approve_registration: 'قبول طلب انضمام',
+  reject_registration: 'رفض طلب انضمام',
+  update_team: 'تعديل فريق',
+  CLOSED_MONTH_CORRECTION: 'تصحيح شهر مغلق',
+  MONTHLY_RANKING_REVISED: 'إعادة احتساب ترتيب شهر مغلق',
+  update_team_manager: 'تعديل مدير فريق',
+  update_user: 'تعديل حساب',
 };
 export const AUDIT_ENTITY_AR = {
   performance_evaluations: 'تقييم أداء',
+  registration_requests: 'طلب انضمام',
+  teams: 'فريق',
+  monthly_rankings: 'ترتيب شهري',
+  users: 'حساب',
 };
 const invert = (o) => Object.fromEntries(Object.entries(o).map(([k, v]) => [v, k]));
 export const AUDIT_ACTION_CODE = invert(AUDIT_ACTION_AR);

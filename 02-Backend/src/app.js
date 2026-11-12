@@ -12,6 +12,7 @@ const usersRepository = require('./repositories/users.repository')
 const loadProjectUser = require('./middleware/load-project-user')
 const requireRole = require('./middleware/require-role')
 const usersRoutes = require('./routes/users.routes')
+const registrationsRoutes = require('./routes/registrations.routes')
 
 // Phase 2
 const { createPointsRouter } = require('../dist/phase2/points/points.routes.js')
@@ -23,17 +24,63 @@ const { createAuditRouter } =
   require('../dist/phase2/audit/audit.routes.js')
 
 const { createManagerEvaluationsRouter } = require('../dist/phase2/evaluations/manager-evaluations.routes.js')
+const { createPublicRankingsRouter } = require('../dist/phase2/rankings/public-rankings.routes.js')
+const { createArchiveRouter } = require('../dist/phase2/archive/archive.routes.js')
+const { createDashboardHandlers } = require('../dist/phase2/dashboards/dashboards.handlers.js')
+const { createAssistantDataRouter } = require('../dist/phase2/assistant/assistant-data.routes.js')
+const { createAssistantRouter } = require('../dist/phase2/assistant/assistant.routes.js')
+const { createRatingsRouter } = require('../dist/phase2/ratings/ratings.routes.js')
+const { createActivitiesRouter } = require('../dist/phase2/activities/activities.routes.js')
+const { createAwardsRouter } = require('../dist/phase2/awards/awards.routes.js')
+const { createPoliciesRouter, createPointLimit } = require('../dist/phase2/policies/policies.routes.js')
+const { createSyslogRouter } = require('../dist/phase2/system/syslog.routes.js')
+const requireTeamAccess = require('./middleware/require-team-access')
 
 const app = express()
 
-app.use(cors())
+const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:5173,http://127.0.0.1:5173')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean)
+
+app.use(cors({
+  origin: allowedOrigins,
+  credentials: true,
+  // Idempotency-Key: sent by the frontend on POST /api/points (duplicate-submission protection).
+  // Without it here the browser's preflight fails and the request never reaches the API.
+  allowedHeaders: ['Authorization', 'Content-Type', 'Accept', 'Idempotency-Key'],
+  exposedHeaders: ['Authorization', 'Retry-After', 'Idempotent-Replayed'],
+}))
 app.use(express.json())
 
-// Phase 2: Public rankings are accessible without login.
-app.use('/api/rankings', createRankingsRouter(pool))
+// Only filter options and the current-month summary are public.
+app.use('/api/rankings', createPublicRankingsRouter(pool))
 
 // Verifies Clerk session tokens for subsequent routes.
-app.use(clerkMiddleware())
+// Development machines often drift from Clerk's clock; production keeps Clerk's strict default.
+const clockSkewInMs = Number(process.env.CLERK_CLOCK_SKEW_MS) ||
+  (process.env.NODE_ENV === 'production' ? 5000 : 60000)
+app.use(clerkMiddleware({ clockSkewInMs }))
+
+// Full, team and historical rankings require a signed-in project account.
+app.use('/api/rankings', loadProjectUser, createRankingsRouter(pool))
+
+const dashboards = createDashboardHandlers(pool)
+app.get('/api/overview', loadProjectUser, requireRole('organizer'), dashboards.organizerOverview)
+app.get('/api/dashboard/ratings', loadProjectUser, requireRole('organizer'), dashboards.organizerDashboard)
+app.get('/api/ratings/ledger', loadProjectUser, requireRole('organizer'), dashboards.pointsLedger)
+app.use('/api/ratings', loadProjectUser, createRatingsRouter(pool))
+app.use('/api/activities', loadProjectUser, createActivitiesRouter(pool))
+app.use('/api/awards', loadProjectUser, createAwardsRouter(pool))
+app.use('/api/policies', loadProjectUser, createPoliciesRouter(pool))
+app.use('/api/syslog', loadProjectUser, requireRole('organizer'), createSyslogRouter(pool))
+app.get('/api/teams/:id/overview', loadProjectUser, requireTeamAccess, dashboards.teamOverview)
+
+app.use('/api/archive', loadProjectUser, requireRole('organizer', 'manager'), createArchiveRouter(pool))
+
+// The data router is mounted first so POST /api/assistant stays the only other route under this path.
+app.use('/api/assistant/data', loadProjectUser, createAssistantDataRouter(pool))
+app.use('/api/assistant', loadProjectUser, createAssistantRouter())
 
 app.use(
   '/api/audit',
@@ -156,9 +203,11 @@ app.get(
 )
 
 app.use('/api/users', usersRoutes)
+// Self-registration review: organizers approve or reject people who signed up at Clerk.
+app.use('/api/registrations', loadProjectUser, requireRole('organizer'), registrationsRoutes)
 
 // Phase 2: Protected point operations.
-app.use('/api/points', loadProjectUser, createPointsRouter(pool))
+app.use('/api/points', loadProjectUser, createPointLimit(pool), createPointsRouter(pool))
 
 app.use('/api/evaluations', loadProjectUser, createManagerEvaluationsRouter(pool))
 
