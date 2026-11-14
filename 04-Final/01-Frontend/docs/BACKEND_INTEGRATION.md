@@ -1,0 +1,64 @@
+# ربط الواجهة بالـ Backend الحقيقي (02-Backend)
+
+> **الحالة النهائية:** كل الصفحات تعمل مع الخادم الحقيقي. يتم الانضمام بطلب انضمام وموافقة وتعيين (لا إنشاء يدوي للحسابات)، والترتيب الشهري متاح لكل الأدوار للحرمين معًا أو لكل حرم. المرجع: `02-Backend/docs/api.md` و`README.md` الرئيسي.
+
+تحديث MVP: لوحة المدير، النظرة العامة، الأرشيف الشهري والمساعد أصبحت مفعّلة مع الباك الحقيقي. الترتيب الكامل يتطلب تسجيل الدخول، وصفحة المجتمع تستخدم `GET /rankings/public-summary`. الأشهر تُحسب بتوقيت `Asia/Hebron`.
+
+الحالة: **ربط جزئي**. المستخدمون والفرق والنقاط وسجل التدقيق مربوطة. الترتيب العام موصول (حسب مجموع النقاط، قرار الفريق). تقييم المدير (4 معايير) جاهز في `backend/client.js` ومختبَر، لكنه غير موصول بالشاشات حتى يُحسم سؤال الـ15 بندًا. الباقي على الـ mock.
+
+## التشغيل ضد الباك
+1. انسخ `.env.example` إلى `.env.local`، وضع `VITE_USE_MOCK=false` و`VITE_API_URL=http://localhost:3001/api`.
+2. شغّل الباك (`02-Backend`) و`npm run dev` هنا.
+3. الدخول يحتاج Clerk (انظر «غير منجز»).
+
+## أين يتم التحويل؟
+كل شيء في `src/services/`، والصفحات لا تتغير:
+- `httpCore.js`: يفك `{ data }`، ويترجم `{ error: { code, message } }` إلى رسالة عربية (`backend/errorsAr.js`)، ويطلب توكن Bearer جديدًا لكل طلب.
+- `http.js`: يربط التوكن بمزوّد خارجي: `setAuthProvider({ getToken, signOut })` (Clerk لاحقًا).
+- `backend/adapters.js`: يحوّل شكل الباك لشكل الواجهة (معرّفات نصية، `campus` مفتاح، `status`).
+- `backend/client.js`: العمليات الفعلية لكل شاشة.
+- `backend/backend.test.js`: اختبارات ضد خادم وهمي بنفس أشكال `02-Backend/docs/api.md`.
+
+## جدول المطابقة (ما تم)
+| الواجهة | الباك |
+| --- | --- |
+| دخول/المستخدم الحالي | `GET /auth/me` (الدخول عبر Clerk، لا يوجد `/auth/login`) |
+| قائمة المستخدمين / المحذوفون | `GET /users` / `GET /users/deleted` |
+| إضافة مستخدم | `POST /users` `{name,email,role,teamId}` (يرسل دعوة، بلا كلمة سر) |
+| تعديل مستخدم | `PATCH /users/:id` (الحقول المتغيرة فقط + `reason` إلزامي) |
+| تعطيل/تفعيل | `PATCH /users/:id/status` `{isActive}` |
+| حذف / استرجاع | `DELETE /users/:id` `{reason}` / `POST /users/:id/restore` `{reason}` (يعود معطّلًا) |
+| الفرق | `GET /teams`, `GET /campuses`, `POST /teams`, `PATCH /teams/:id/status` |
+| أعضاء يمكن منحهم نقاط | منظّم: `GET /users`، مدير: `GET /teams/:id/members` |
+| إضافة نقاط | `POST /points` `{userId,points,activityName,reason}` (من -100 إلى 100) |
+| عكس عملية | `POST /points/:id/reverse` `{reason}` |
+| نقاطي | `GET /points/me` (آخر 50 عملية، بدون ترتيب) |
+| الترتيب العام (موصول) | `GET /rankings/options` ثم `GET /rankings` (`scope=campus` لكل حرم، أو `team`) و`/rankings/archived` للأشهر السابقة. عام بلا توكن. الدمج وترتيب الحرمين معًا يتم في الواجهة. الصف لا يحوي الفريق ولا الصورة |
+| سجل التدقيق (موصول) | `GET /audit` (أول 100 عملية، الأحدث أولًا). رموز الإجراءات (`create_point_entry`...) تتحول لنص عربي، والفلاتر ترجع للرمز عند الإرسال |
+
+## ماذا يحدث للصفحات التي بلا endpoints (وضع الباك الحقيقي فقط)
+- الصفحات المذكورة في `src/lib/availability.js` (`COMING_SOON_REAL`) تعرض صفحة «غير متاحة بعد مع الخادم الحقيقي»، وفي القائمة الجانبية تظهر باهتة بوسم «قريبًا». لا طلبات تذهب للباك لعناوين غير موجودة.
+- صفحة الانطلاق بعد الدخول: المنظّم `/organizer/members`، والمدير والعضو `/leaderboard`.
+- «نقاطي» تعرض سجل النقاط (`GET /points/me`) بدل صفحة التقييمات.
+- صفحة المجتمع (Welcome) تبني «نجوم الفرق» من الترتيب العام (متصدر كل فريق)، ولا يوجد عضو شهر ولا أخبار.
+- عندما يجهّز الباك endpoint لصفحة: احذف مسارها من `COMING_SOON_REAL`.
+- بالوضع التجريبي (`VITE_USE_MOCK=true`) لا شيء من هذا يتغير.
+- **إضافة نقاط** (`/give-points`، منظّم ومدير): قائمة الأعضاء المسموحين (المنظّم: كل الأعضاء الفعّالين، المدير: أعضاء فريقه) ثم `POST /points` مع اسم النشاط والسبب. تظهر العملية في سجل التدقيق.
+- **تقييم المدراء** (`/organizer/evals`، منظّم): قائمة المدراء الفعّالين مع عدد تقييمات الشهر ومتوسطها (`GET /evaluations/managers/:id/average`)، وزر «تقييم جديد» (`POST /evaluations/managers`) بأربع درجات 0-100 بأوزان 30/30/20/20. كل تقييم سجل جديد لا يُعدَّل، والمتوسط يحسبه الباك. لا مسودة ولا اعتماد ولا تعديل معايير (خاص بالوضع التجريبي).
+
+## 4 معايير للمدراء (مطابقة للباك)
+معايير المدير الأربعة معرّفة في `MANAGER_CRITERIA` (`backend/adapters.js`) وتطابق الباك: الالتزام والانضباط 30، متابعة الفريق 30، التواصل والتعاون 20، نتائج الفريق 20. أما «تقييم الأداء» (15 بندًا للأعضاء) فلا endpoint له بالباك.
+
+## غير منجز / غير موجود بالباك
+- **الدخول بـ Clerk**: منجز بالكود (انظر `CLERK_SETUP.md`) لكنه لم يُجرَّب على Clerk الحقيقي بعد.
+- **عكس نقاط** (`POST /points/:id/reverse`): الدالة جاهزة بـ `client.js` بلا شاشة.
+- **لا endpoints لها بالباك**: النظرة العامة، الأرشيف وإغلاق الشهر (الخدمة موجودة بلا route)، السياسات (للقراءة فقط بقيم افتراضية)، System Logs، المساعد، التقييمات (15 بندًا) والأنشطة والأخبار والجوائز، وسجل النقاط الكامل.
+- **تعديل اسم الفريق أو مديريه**: لا endpoint (يتوفر `PATCH /teams/:id/manager` للاستبدال، غير مربوط بالواجهة بعد).
+- أي عملية غير مدعومة ترمي `ApiError(501)` برسالة عربية واضحة، ولا تنهار الشاشة.
+
+## Sign-in (Clerk) and invitations
+
+The real backend has no `/auth/login`: accounts and passwords live in Clerk. With `VITE_USE_MOCK=false` the login page shows Clerk's sign-in,
+every request carries a fresh Clerk session token, and `/accept-invitation` finishes the invitation flow.
+Setup, the invitation URL rule (no `#`, no query) and what to verify on the first real run: see [`CLERK_SETUP.md`](CLERK_SETUP.md).
+
