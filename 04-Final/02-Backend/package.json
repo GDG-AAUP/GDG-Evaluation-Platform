@@ -1,0 +1,37 @@
+{
+  "name": "gdg-evaluation-backend",
+  "version": "1.0.0",
+  "description": "GDG evaluation platform backend",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch-path=./src --watch-path=./dist --watch-preserve-output src/server.js",
+    "smtp:check": "node scripts/check-smtp.js",
+    "test": "node --test tests/*.test.js",
+    "test:db": "node --env-file=.env --test tests/*.test.js",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit",
+    "predev": "npm run build",
+    "pretest": "npm run build",
+    "pretest:db": "npm run build",
+    "prestart": "npm run build"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@clerk/express": "^2.1.79",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.8",
+    "express": "^5.3.0",
+    "nodemailer": "10.2.1",
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.6.5",
+    "@types/pg": "^8.23.1",
+    "typescript": "^7.0.2"
+  }
+}
